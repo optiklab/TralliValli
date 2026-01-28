@@ -39,18 +39,22 @@ public class InviteService : IInviteService
         // Generate a secure random token
         var token = GenerateSecureToken();
         
-        // Sign the token with HMAC-SHA256
-        var signature = SignToken(token, inviterId, expiryHours);
+        // Truncate to millisecond precision to match MongoDB storage precision
+        var expiresAt = DateTime.UtcNow.AddHours(expiryHours);
+        expiresAt = new DateTime(expiresAt.Ticks - (expiresAt.Ticks % TimeSpan.TicksPerMillisecond), expiresAt.Kind);
+        
+        // Sign the token with HMAC-SHA256 (include timestamp for security)
+        var signature = SignToken(token, inviterId, expiresAt);
         var signedToken = $"{token}.{signature}";
 
         // Create the invite entity
         var invite = new Invite
         {
             Token = signedToken,
-            Email = string.Empty, // Email can be optional for invite links
+            Email = "invite@system.local", // Use placeholder email for system-generated invites
             InviterId = inviterId,
             CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
+            ExpiresAt = expiresAt,
             IsUsed = false
         };
 
@@ -80,15 +84,20 @@ public class InviteService : IInviteService
         if (string.IsNullOrWhiteSpace(token))
             return null;
 
-        // Verify the token signature
-        if (!VerifyTokenSignature(token))
+        // Parse the token to get the parts
+        var parts = token.Split('.');
+        if (parts.Length != 2)
             return null;
 
-        // Find the invite in the database
+        // Find the invite in the database first
         var filter = Builders<Invite>.Filter.Eq(i => i.Token, token);
         var invite = await _invites.Find(filter).FirstOrDefaultAsync();
 
         if (invite == null)
+            return null;
+
+        // Verify the token signature using stored data
+        if (!VerifyTokenSignature(token, invite.InviterId, invite.ExpiresAt))
             return null;
 
         // Check if expired
@@ -117,15 +126,16 @@ public class InviteService : IInviteService
         if (string.IsNullOrWhiteSpace(userId))
             return false;
 
-        // Validate the invite first
-        var validationResult = await ValidateInviteAsync(token);
-        if (validationResult == null)
+        // Parse the token to get the parts
+        var parts = token.Split('.');
+        if (parts.Length != 2)
             return false;
 
-        // Find and update the invite atomically
+        // Atomic update with all validation checks in the filter
         var filter = Builders<Invite>.Filter.And(
             Builders<Invite>.Filter.Eq(i => i.Token, token),
-            Builders<Invite>.Filter.Eq(i => i.IsUsed, false)
+            Builders<Invite>.Filter.Eq(i => i.IsUsed, false),
+            Builders<Invite>.Filter.Gt(i => i.ExpiresAt, DateTime.UtcNow)
         );
         
         var update = Builders<Invite>.Update
@@ -134,7 +144,29 @@ public class InviteService : IInviteService
             .Set(i => i.UsedAt, DateTime.UtcNow);
 
         var result = await _invites.UpdateOneAsync(filter, update);
-        return result.IsAcknowledged && result.ModifiedCount > 0;
+        
+        // If update succeeded, verify the signature
+        if (result.IsAcknowledged && result.ModifiedCount > 0)
+        {
+            // Retrieve the invite to verify signature
+            var inviteFilter = Builders<Invite>.Filter.Eq(i => i.Token, token);
+            var invite = await _invites.Find(inviteFilter).FirstOrDefaultAsync();
+            
+            if (invite != null && !VerifyTokenSignature(token, invite.InviterId, invite.ExpiresAt))
+            {
+                // Signature verification failed - rollback by marking as unused
+                var rollbackUpdate = Builders<Invite>.Update
+                    .Set(i => i.IsUsed, false)
+                    .Set(i => i.UsedBy, null)
+                    .Set(i => i.UsedAt, null);
+                await _invites.UpdateOneAsync(inviteFilter, rollbackUpdate);
+                return false;
+            }
+            
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -144,10 +176,8 @@ public class InviteService : IInviteService
     private static string GenerateSecureToken()
     {
         var randomBytes = new byte[TokenLength];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(randomBytes);
-        }
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
         return Convert.ToBase64String(randomBytes)
             .Replace("+", "-")
             .Replace("/", "_")
@@ -159,11 +189,12 @@ public class InviteService : IInviteService
     /// </summary>
     /// <param name="token">The token to sign</param>
     /// <param name="inviterId">The inviter ID</param>
-    /// <param name="expiryHours">The expiry hours</param>
+    /// <param name="expiresAt">The expiration timestamp</param>
     /// <returns>The signature</returns>
-    private string SignToken(string token, string inviterId, int expiryHours)
+    private string SignToken(string token, string inviterId, DateTime expiresAt)
     {
-        var data = $"{token}:{inviterId}:{expiryHours}";
+        // Include timestamp (ticks) instead of hours for immutable signature
+        var data = $"{token}:{inviterId}:{expiresAt.Ticks}";
         var keyBytes = Encoding.UTF8.GetBytes(_signingKey);
         var dataBytes = Encoding.UTF8.GetBytes(data);
 
@@ -179,8 +210,10 @@ public class InviteService : IInviteService
     /// Verifies the signature of a token
     /// </summary>
     /// <param name="signedToken">The signed token to verify</param>
+    /// <param name="inviterId">The inviter ID from the database</param>
+    /// <param name="expiresAt">The expiration timestamp from the database</param>
     /// <returns>True if the signature is valid, false otherwise</returns>
-    private bool VerifyTokenSignature(string signedToken)
+    private bool VerifyTokenSignature(string signedToken, string inviterId, DateTime expiresAt)
     {
         var parts = signedToken.Split('.');
         if (parts.Length != 2)
@@ -189,9 +222,16 @@ public class InviteService : IInviteService
         var token = parts[0];
         var providedSignature = parts[1];
 
-        // We need to extract the inviterId and expiryHours from the database
-        // For verification, we'll rely on the database lookup
-        // The signature verification is done implicitly by checking if the token exists in DB
-        return true;
+        // Truncate to millisecond precision to match what was signed
+        expiresAt = new DateTime(expiresAt.Ticks - (expiresAt.Ticks % TimeSpan.TicksPerMillisecond), expiresAt.Kind);
+
+        // Recompute the signature using the stored data
+        var expectedSignature = SignToken(token, inviterId, expiresAt);
+
+        // Compare signatures using constant-time comparison to prevent timing attacks
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(providedSignature),
+            Encoding.UTF8.GetBytes(expectedSignature)
+        );
     }
 }
