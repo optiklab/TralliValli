@@ -35,4 +35,13 @@ public interface IEmailService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task representing the async operation</returns>
     Task SendPasswordResetEmailAsync(string recipientEmail, string recipientName, string resetLink, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a welcome email to a newly registered user
+    /// </summary>
+    /// <param name="recipientEmail">The recipient's email address</param>
+    /// <param name="recipientName">The recipient's name</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Task representing the async operation</returns>
+    Task SendWelcomeEmailAsync(string recipientEmail, string recipientName, CancellationToken cancellationToken = default);
 }
