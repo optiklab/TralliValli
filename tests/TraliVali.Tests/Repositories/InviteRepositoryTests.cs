@@ -27,7 +27,7 @@ public class InviteRepositoryTests : IClassFixture<MongoDbFixture>
         {
             Token = Guid.NewGuid().ToString(),
             Email = "invitee@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsUsed = false
         };
@@ -52,7 +52,7 @@ public class InviteRepositoryTests : IClassFixture<MongoDbFixture>
         {
             Token = token,
             Email = "test@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
         await _repository.AddAsync(invite);
@@ -75,7 +75,7 @@ public class InviteRepositoryTests : IClassFixture<MongoDbFixture>
         {
             Token = Guid.NewGuid().ToString(),
             Email = "test1@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsUsed = false
         };
@@ -83,7 +83,7 @@ public class InviteRepositoryTests : IClassFixture<MongoDbFixture>
         {
             Token = Guid.NewGuid().ToString(),
             Email = "test2@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsUsed = true,
             UsedAt = DateTime.UtcNow
@@ -110,7 +110,7 @@ public class InviteRepositoryTests : IClassFixture<MongoDbFixture>
         {
             Token = Guid.NewGuid().ToString(),
             Email = "test@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsUsed = false
         };

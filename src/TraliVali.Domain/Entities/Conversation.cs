@@ -16,6 +16,12 @@ public class Conversation
     public string Id { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the conversation type (e.g., direct, group, channel)
+    /// </summary>
+    [BsonElement("type")]
+    public string Type { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets the conversation name
     /// </summary>
     [BsonElement("name")]
@@ -26,6 +32,12 @@ public class Conversation
     /// </summary>
     [BsonElement("participants")]
     public List<Participant> Participants { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the list of recent messages (limited to 50)
+    /// </summary>
+    [BsonElement("recentMessages")]
+    public List<string> RecentMessages { get; set; } = new();
 
     /// <summary>
     /// Gets or sets the date and time when the conversation was created
@@ -40,10 +52,36 @@ public class Conversation
     public DateTime? LastMessageAt { get; set; }
 
     /// <summary>
+    /// Gets or sets additional metadata for the conversation
+    /// </summary>
+    [BsonElement("metadata")]
+    public Dictionary<string, string> Metadata { get; set; } = new();
+
+    /// <summary>
     /// Gets or sets a value indicating whether this is a group conversation
     /// </summary>
     [BsonElement("isGroup")]
     public bool IsGroup { get; set; }
+
+    /// <summary>
+    /// Validates the conversation entity
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(Type))
+            errors.Add("Type is required");
+
+        if (Participants == null || Participants.Count == 0)
+            errors.Add("At least one participant is required");
+
+        if (RecentMessages != null && RecentMessages.Count > 50)
+            errors.Add("RecentMessages cannot exceed 50 items");
+
+        return errors;
+    }
 }
 
 /// <summary>
