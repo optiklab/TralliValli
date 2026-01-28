@@ -167,6 +167,7 @@ public class RabbitMqServiceTests : IClassFixture<RabbitMqFixture>
         
         var allMessagesReceived = new TaskCompletionSource<bool>();
         var receivedCount = 0;
+        var countLock = new object();
 
         var logger = new Mock<ILogger<RabbitMqService>>().Object;
         using var service = new RabbitMqService(_fixture.Configuration, logger);
@@ -176,28 +177,40 @@ public class RabbitMqServiceTests : IClassFixture<RabbitMqFixture>
         await service.StartConsumingAsync("messages.process", async (msg) =>
         {
             messagesQueueMessages.Add(msg);
-            if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            lock (countLock)
+            {
+                if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            }
             await Task.CompletedTask;
         });
 
         await service.StartConsumingAsync("files.process", async (msg) =>
         {
             filesQueueMessages.Add(msg);
-            if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            lock (countLock)
+            {
+                if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            }
             await Task.CompletedTask;
         });
 
         await service.StartConsumingAsync("archival.process", async (msg) =>
         {
             archivalQueueMessages.Add(msg);
-            if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            lock (countLock)
+            {
+                if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            }
             await Task.CompletedTask;
         });
 
         await service.StartConsumingAsync("backup.process", async (msg) =>
         {
             backupQueueMessages.Add(msg);
-            if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            lock (countLock)
+            {
+                if (++receivedCount == 4) allMessagesReceived.SetResult(true);
+            }
             await Task.CompletedTask;
         });
 

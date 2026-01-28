@@ -63,7 +63,8 @@ public class RabbitMqService : IMessagePublisher, IMessageConsumer, IDisposable
     private IModel? _channel;
     private bool _isInitialized;
     private readonly SemaphoreSlim _initializationLock = new(1, 1);
-    private string? _currentConsumerTag;
+    private readonly Dictionary<string, string> _consumerTags = new();
+    private readonly object _channelLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RabbitMqService"/> class
@@ -184,18 +185,21 @@ public class RabbitMqService : IMessagePublisher, IMessageConsumer, IDisposable
 
         await _resiliencePipeline.ExecuteAsync(async token =>
         {
-            var body = Encoding.UTF8.GetBytes(message);
-            var properties = _channel!.CreateBasicProperties();
-            properties.Persistent = true;
-            properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            lock (_channelLock)
+            {
+                var body = Encoding.UTF8.GetBytes(message);
+                var properties = _channel!.CreateBasicProperties();
+                properties.Persistent = true;
+                properties.Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
-            _channel!.BasicPublish(
-                exchange: ExchangeName,
-                routingKey: routingKey,
-                basicProperties: properties,
-                body: body);
+                _channel!.BasicPublish(
+                    exchange: ExchangeName,
+                    routingKey: routingKey,
+                    basicProperties: properties,
+                    body: body);
 
-            _logger.LogDebug("Published message to {RoutingKey}", routingKey);
+                _logger.LogDebug("Published message to {RoutingKey}", routingKey);
+            }
             return ValueTask.CompletedTask;
         }, cancellationToken);
     }
@@ -210,44 +214,78 @@ public class RabbitMqService : IMessagePublisher, IMessageConsumer, IDisposable
 
         await EnsureInitializedAsync(cancellationToken);
 
-        var consumer = new EventingBasicConsumer(_channel!);
-        consumer.Received += async (sender, ea) =>
+        lock (_channelLock)
         {
-            try
+            if (_channel == null)
+                throw new InvalidOperationException("Channel is not initialized");
+
+            var consumer = new EventingBasicConsumer(_channel);
+            consumer.Received += async (sender, ea) =>
             {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
+                try
+                {
+                    var body = ea.Body.ToArray();
+                    var message = Encoding.UTF8.GetString(body);
 
-                _logger.LogDebug("Received message from {QueueName}", queueName);
+                    _logger.LogDebug("Received message from {QueueName}", queueName);
 
-                await onMessageReceived(message);
+                    await onMessageReceived(message);
 
-                _channel!.BasicAck(ea.DeliveryTag, multiple: false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing message from {QueueName}", queueName);
-                // Reject and requeue the message
-                _channel!.BasicNack(ea.DeliveryTag, multiple: false, requeue: true);
-            }
-        };
+                    lock (_channelLock)
+                    {
+                        _channel?.BasicAck(ea.DeliveryTag, multiple: false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing message from {QueueName}", queueName);
+                    // Reject and requeue the message
+                    lock (_channelLock)
+                    {
+                        try
+                        {
+                            _channel?.BasicNack(ea.DeliveryTag, multiple: false, requeue: true);
+                        }
+                        catch (Exception nackEx)
+                        {
+                            _logger.LogError(nackEx, "Error sending NACK for message from {QueueName}", queueName);
+                        }
+                    }
+                }
+            };
 
-        _currentConsumerTag = _channel!.BasicConsume(
-            queue: queueName,
-            autoAck: false,
-            consumer: consumer);
+            var consumerTag = _channel.BasicConsume(
+                queue: queueName,
+                autoAck: false,
+                consumer: consumer);
 
-        _logger.LogInformation("Started consuming from queue: {QueueName}", queueName);
+            _consumerTags[queueName] = consumerTag;
+
+            _logger.LogInformation("Started consuming from queue: {QueueName}", queueName);
+        }
     }
 
     /// <inheritdoc/>
     public void StopConsuming()
     {
-        if (_currentConsumerTag != null && _channel != null)
+        lock (_channelLock)
         {
-            _channel.BasicCancel(_currentConsumerTag);
-            _currentConsumerTag = null;
-            _logger.LogInformation("Stopped consuming messages");
+            if (_consumerTags.Count > 0 && _channel != null)
+            {
+                foreach (var consumerTag in _consumerTags.Values)
+                {
+                    try
+                    {
+                        _channel.BasicCancel(consumerTag);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error cancelling consumer {ConsumerTag}", consumerTag);
+                    }
+                }
+                _consumerTags.Clear();
+                _logger.LogInformation("Stopped consuming messages");
+            }
         }
     }
 
