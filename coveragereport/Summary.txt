@@ -1,0 +1,43 @@
+Summary
+  Generated on: 01/28/2026 - 15:18:01
+  Coverage date: 01/28/2026 - 15:12:19 - 01/28/2026 - 15:17:55
+  Parser: MultiReport (2x Cobertura)
+  Assemblies: 3
+  Classes: 17
+  Files: 15
+  Line coverage: 74.8%
+  Covered lines: 182
+  Uncovered lines: 61
+  Coverable lines: 243
+  Total lines: 786
+  Branch coverage: 77.7% (28 of 36)
+  Covered branches: 28
+  Total branches: 36
+  Method coverage: 96.4% (82 of 85)
+  Full method coverage: 94.1% (80 of 85)
+  Covered methods: 82
+  Fully covered methods: 80
+  Total methods: 85
+
+TraliVali.Api                                                       0%
+  Program                                                           0%
+  WeatherForecast                                                   0%
+
+TraliVali.Domain                                                  100%
+  TraliVali.Domain.Entities.Backup                                100%
+  TraliVali.Domain.Entities.Conversation                          100%
+  TraliVali.Domain.Entities.File                                  100%
+  TraliVali.Domain.Entities.Invite                                100%
+  TraliVali.Domain.Entities.Message                               100%
+  TraliVali.Domain.Entities.Participant                           100%
+  TraliVali.Domain.Entities.User                                  100%
+
+TraliVali.Infrastructure                                         91.8%
+  TraliVali.Infrastructure.Data.MongoDbContext                   83.5%
+  TraliVali.Infrastructure.Repositories.BackupRepository          100%
+  TraliVali.Infrastructure.Repositories.ConversationRepository    100%
+  TraliVali.Infrastructure.Repositories.FileRepository            100%
+  TraliVali.Infrastructure.Repositories.InviteRepository          100%
+  TraliVali.Infrastructure.Repositories.MessageRepository         100%
+  TraliVali.Infrastructure.Repositories.MongoRepository<T>        100%
+  TraliVali.Infrastructure.Repositories.UserRepository            100%
