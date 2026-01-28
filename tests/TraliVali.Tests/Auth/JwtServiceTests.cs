@@ -243,6 +243,14 @@ public class JwtServiceTests
         var deviceId = "device123";
         var tokenResult = _jwtService.GenerateToken(user, deviceId);
 
+        // Verify refresh token has required claims
+        var handler = new JwtSecurityTokenHandler();
+        var refreshToken = handler.ReadJwtToken(tokenResult.RefreshToken);
+        var hasEmail = refreshToken.Claims.Any(c => c.Type == "email");
+        var hasDisplayName = refreshToken.Claims.Any(c => c.Type == "displayName");
+        Assert.True(hasEmail, "Refresh token should have email claim");
+        Assert.True(hasDisplayName, "Refresh token should have displayName claim");
+
         // Act
         var newTokenResult = await _jwtService.RefreshTokenAsync(tokenResult.RefreshToken);
 
@@ -252,6 +260,12 @@ public class JwtServiceTests
         Assert.NotEmpty(newTokenResult.RefreshToken);
         Assert.NotEqual(tokenResult.AccessToken, newTokenResult.AccessToken);
         Assert.NotEqual(tokenResult.RefreshToken, newTokenResult.RefreshToken);
+
+        // Verify the new access token has correct user claims
+        var newAccessToken = handler.ReadJwtToken(newTokenResult.AccessToken);
+        Assert.Equal("user123", newAccessToken.Claims.FirstOrDefault(c => c.Type == "userId")?.Value);
+        Assert.Equal("test@example.com", newAccessToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value);
+        Assert.Equal("Test User", newAccessToken.Claims.FirstOrDefault(c => c.Type == "displayName")?.Value);
     }
 
     [Fact]
@@ -341,6 +355,8 @@ public class JwtServiceTests
 
         // Assert
         Assert.Equal("refresh", refreshToken.Claims.FirstOrDefault(c => c.Type == "tokenType")?.Value);
+        Assert.Equal("test@example.com", refreshToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value);
+        Assert.Equal("Test User", refreshToken.Claims.FirstOrDefault(c => c.Type == "displayName")?.Value);
     }
 
     [Fact]
@@ -368,5 +384,86 @@ public class JwtServiceTests
         
         Assert.True(accessTokenDays >= 6.9 && accessTokenDays <= 7.1); // Allow small margin
         Assert.True(refreshTokenDays >= 29.9 && refreshTokenDays <= 30.1); // Allow small margin
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenSettingsIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new JwtService(null!, _mockBlacklistService.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenBlacklistServiceIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new JwtService(_settings, null!));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenPrivateKeyIsEmpty()
+    {
+        // Arrange
+        var invalidSettings = new JwtSettings
+        {
+            PrivateKey = "",
+            PublicKey = TestKeyGenerator.PublicKey,
+            Issuer = "TestIssuer",
+            Audience = "TestAudience"
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new JwtService(invalidSettings, _mockBlacklistService.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenPublicKeyIsEmpty()
+    {
+        // Arrange
+        var invalidSettings = new JwtSettings
+        {
+            PrivateKey = TestKeyGenerator.PrivateKey,
+            PublicKey = "",
+            Issuer = "TestIssuer",
+            Audience = "TestAudience"
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new JwtService(invalidSettings, _mockBlacklistService.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenExpirationDaysIsZero()
+    {
+        // Arrange
+        var invalidSettings = new JwtSettings
+        {
+            PrivateKey = TestKeyGenerator.PrivateKey,
+            PublicKey = TestKeyGenerator.PublicKey,
+            Issuer = "TestIssuer",
+            Audience = "TestAudience",
+            ExpirationDays = 0
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new JwtService(invalidSettings, _mockBlacklistService.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenRefreshTokenExpirationDaysIsNegative()
+    {
+        // Arrange
+        var invalidSettings = new JwtSettings
+        {
+            PrivateKey = TestKeyGenerator.PrivateKey,
+            PublicKey = TestKeyGenerator.PublicKey,
+            Issuer = "TestIssuer",
+            Audience = "TestAudience",
+            ExpirationDays = 7,
+            RefreshTokenExpirationDays = -1
+        };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new JwtService(invalidSettings, _mockBlacklistService.Object));
     }
 }

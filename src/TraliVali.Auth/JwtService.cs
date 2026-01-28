@@ -9,13 +9,16 @@ namespace TraliVali.Auth;
 /// <summary>
 /// Implementation of JWT service for token generation and validation
 /// </summary>
-public class JwtService : IJwtService
+public class JwtService : IJwtService, IDisposable
 {
     private readonly JwtSettings _settings;
     private readonly ITokenBlacklistService _blacklistService;
     private readonly JwtSecurityTokenHandler _tokenHandler;
+    private readonly RSA _privateRsa;
+    private readonly RSA _publicRsa;
     private readonly RsaSecurityKey _signingKey;
     private readonly RsaSecurityKey _validationKey;
+    private bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JwtService"/> class
@@ -26,16 +29,27 @@ public class JwtService : IJwtService
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _blacklistService = blacklistService ?? throw new ArgumentNullException(nameof(blacklistService));
+
+        // Validate settings
+        if (string.IsNullOrWhiteSpace(_settings.PrivateKey))
+            throw new ArgumentException("PrivateKey is required", nameof(settings));
+        if (string.IsNullOrWhiteSpace(_settings.PublicKey))
+            throw new ArgumentException("PublicKey is required", nameof(settings));
+        if (_settings.ExpirationDays <= 0)
+            throw new ArgumentException("ExpirationDays must be positive", nameof(settings));
+        if (_settings.RefreshTokenExpirationDays <= 0)
+            throw new ArgumentException("RefreshTokenExpirationDays must be positive", nameof(settings));
+
         _tokenHandler = new JwtSecurityTokenHandler();
 
         // Load RSA keys
-        var privateRsa = RSA.Create();
-        privateRsa.ImportFromPem(_settings.PrivateKey);
-        _signingKey = new RsaSecurityKey(privateRsa);
+        _privateRsa = RSA.Create();
+        _privateRsa.ImportFromPem(_settings.PrivateKey);
+        _signingKey = new RsaSecurityKey(_privateRsa);
 
-        var publicRsa = RSA.Create();
-        publicRsa.ImportFromPem(_settings.PublicKey);
-        _validationKey = new RsaSecurityKey(publicRsa);
+        _publicRsa = RSA.Create();
+        _publicRsa.ImportFromPem(_settings.PublicKey);
+        _validationKey = new RsaSecurityKey(_publicRsa);
     }
 
     /// <inheritdoc/>
@@ -71,10 +85,12 @@ public class JwtService : IJwtService
             signingCredentials: new SigningCredentials(_signingKey, SecurityAlgorithms.RsaSha256)
         );
 
-        // Create refresh token claims
+        // Create refresh token claims - include email and displayName for token refresh
         var refreshClaims = new[]
         {
             new Claim("userId", user.Id),
+            new Claim("email", user.Email),
+            new Claim("displayName", user.DisplayName),
             new Claim("deviceId", deviceId),
             new Claim("tokenType", "refresh"),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
@@ -195,22 +211,20 @@ public class JwtService : IJwtService
 
             var userId = validationResult.UserId;
             var deviceId = validationResult.DeviceId;
+            var email = validationResult.Principal?.FindFirst("email")?.Value;
+            var displayName = validationResult.Principal?.FindFirst("displayName")?.Value;
 
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(deviceId))
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(deviceId) || 
+                string.IsNullOrEmpty(email) || string.IsNullOrEmpty(displayName))
                 return null;
 
-            // Create a minimal user object for token generation
-            // In a real scenario, you would fetch the user from the database
+            // Create a user object for token generation with data from refresh token
             var user = new User
             {
                 Id = userId,
-                Email = validationResult.Principal?.FindFirst("email")?.Value ?? "",
-                DisplayName = validationResult.Principal?.FindFirst("displayName")?.Value ?? ""
+                Email = email,
+                DisplayName = displayName
             };
-
-            // If user doesn't have email/displayName in refresh token, we need to fetch from DB
-            // For now, we'll require the caller to provide a proper user object
-            // This is a simplification for the implementation
 
             // Blacklist the old refresh token (rotation)
             var tokenExpiry = validationResult.Principal?.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
@@ -226,6 +240,32 @@ public class JwtService : IJwtService
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Disposes the JWT service and releases RSA resources
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Disposes the JWT service resources
+    /// </summary>
+    /// <param name="disposing">True if disposing managed resources</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _privateRsa?.Dispose();
+                _publicRsa?.Dispose();
+            }
+            _disposed = true;
         }
     }
 }
