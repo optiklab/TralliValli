@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TraliVali.Api/TraliVali.Api.csproj" />
+    <Project Path="src/TraliVali.Auth/TraliVali.Auth.csproj" />
+    <Project Path="src/TraliVali.Domain/TraliVali.Domain.csproj" />
+    <Project Path="src/TraliVali.Infrastructure/TraliVali.Infrastructure.csproj" />
+    <Project Path="src/TraliVali.Messaging/TraliVali.Messaging.csproj" />
+    <Project Path="src/TraliVali.Workers/TraliVali.Workers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TraliVali.Tests/TraliVali.Tests.csproj" />
+  </Folder>
+</Solution>
