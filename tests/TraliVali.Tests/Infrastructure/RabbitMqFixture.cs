@@ -31,8 +31,7 @@ public class RabbitMqFixture : IAsyncLifetime
     /// </summary>
     public async Task InitializeAsync()
     {
-        _rabbitMqContainer = new RabbitMqBuilder()
-            .WithImage("rabbitmq:3.12-management-alpine")
+        _rabbitMqContainer = new RabbitMqBuilder("rabbitmq:3.12-management-alpine")
             .Build();
 
         await _rabbitMqContainer.StartAsync();
