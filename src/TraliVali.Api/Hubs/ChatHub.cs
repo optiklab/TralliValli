@@ -6,6 +6,11 @@ namespace TraliVali.Api.Hubs;
 /// <summary>
 /// SignalR hub for real-time chat functionality
 /// </summary>
+/// <remarks>
+/// TODO: Add authorization checks to verify users are participants in conversations before allowing operations.
+/// TODO: Consider implementing targeted presence updates (only to users with shared conversations) for better scalability.
+/// Currently broadcasts presence to all clients which may become a bottleneck at scale.
+/// </remarks>
 [Authorize]
 public class ChatHub : Hub<IChatClient>
 {
@@ -185,21 +190,31 @@ public class ChatHub : Hub<IChatClient>
     /// Gets the user ID from the current user's claims
     /// </summary>
     /// <returns>The user ID</returns>
+    /// <exception cref="InvalidOperationException">Thrown when user ID claim is not found</exception>
     private string GetUserId()
     {
-        return Context.User?.FindFirst("userId")?.Value 
-            ?? Context.User?.Identity?.Name 
-            ?? "unknown";
+        var userId = Context.User?.FindFirst("userId")?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            _logger.LogError("User ID claim not found for connection {ConnectionId}", Context.ConnectionId);
+            throw new InvalidOperationException("User ID claim not found. Authentication may have failed.");
+        }
+        return userId;
     }
 
     /// <summary>
     /// Gets the user display name from the current user's claims
     /// </summary>
     /// <returns>The user display name</returns>
+    /// <exception cref="InvalidOperationException">Thrown when display name claim is not found</exception>
     private string GetUserName()
     {
-        return Context.User?.FindFirst("displayName")?.Value 
-            ?? Context.User?.Identity?.Name 
-            ?? "Unknown User";
+        var userName = Context.User?.FindFirst("displayName")?.Value;
+        if (string.IsNullOrEmpty(userName))
+        {
+            _logger.LogError("Display name claim not found for connection {ConnectionId}", Context.ConnectionId);
+            throw new InvalidOperationException("Display name claim not found. Authentication may have failed.");
+        }
+        return userName;
     }
 }

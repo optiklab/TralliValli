@@ -74,11 +74,7 @@ try
     };
     builder.Services.AddSingleton(jwtSettings);
 
-    // Configure JWT Authentication
-    var publicRsa = RSA.Create();
-    publicRsa.ImportFromPem(jwtPublicKey);
-    var validationKey = new RsaSecurityKey(publicRsa);
-
+    // Configure JWT Authentication with RSA256 signing
     builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -86,6 +82,11 @@ try
     })
     .AddJwtBearer(options =>
     {
+        // Create RSA key for validation
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(jwtPublicKey);
+        var validationKey = new RsaSecurityKey(rsa);
+        
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -99,6 +100,8 @@ try
         };
 
         // Configure SignalR to use JWT from query string
+        // Note: This is necessary for WebSocket connections which can't use headers
+        // Security tradeoff: tokens may appear in logs, but this is standard for SignalR
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -159,7 +162,7 @@ try
     app.UseHttpsRedirection();
 
     // Add authentication and authorization
-    // JWT validation is automatically handled by the middleware
+    // JWT validation configured above with RSA256 signing and supports SignalR query string tokens
     app.UseAuthentication();
     app.UseAuthorization();
 
