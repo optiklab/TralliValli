@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using Azure;
 using Azure.Communication.Email;
@@ -13,6 +14,8 @@ public class AzureCommunicationEmailService : IEmailService
     private readonly EmailClient _emailClient;
     private readonly AzureCommunicationEmailConfiguration _configuration;
     private readonly ILogger<AzureCommunicationEmailService> _logger;
+    private static readonly Dictionary<string, string> _templateCache = new();
+    private static readonly object _cacheLock = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureCommunicationEmailService"/> class
@@ -53,8 +56,8 @@ public class AzureCommunicationEmailService : IEmailService
 
         var template = await LoadTemplateAsync("MagicLinkEmail.html");
         var htmlContent = template
-            .Replace("{{RecipientName}}", recipientName)
-            .Replace("{{MagicLink}}", magicLink);
+            .Replace("{{RecipientName}}", HtmlEncode(recipientName))
+            .Replace("{{MagicLink}}", HtmlEncode(magicLink));
 
         await SendEmailAsync(
             recipientEmail,
@@ -84,9 +87,9 @@ public class AzureCommunicationEmailService : IEmailService
 
         var template = await LoadTemplateAsync("InviteEmail.html");
         var htmlContent = template
-            .Replace("{{RecipientName}}", recipientName)
-            .Replace("{{InviterName}}", inviterName)
-            .Replace("{{InviteLink}}", inviteLink);
+            .Replace("{{RecipientName}}", HtmlEncode(recipientName))
+            .Replace("{{InviterName}}", HtmlEncode(inviterName))
+            .Replace("{{InviteLink}}", HtmlEncode(inviteLink));
 
         await SendEmailAsync(
             recipientEmail,
@@ -113,8 +116,8 @@ public class AzureCommunicationEmailService : IEmailService
 
         var template = await LoadTemplateAsync("PasswordResetEmail.html");
         var htmlContent = template
-            .Replace("{{RecipientName}}", recipientName)
-            .Replace("{{ResetLink}}", resetLink);
+            .Replace("{{RecipientName}}", HtmlEncode(recipientName))
+            .Replace("{{ResetLink}}", HtmlEncode(resetLink));
 
         await SendEmailAsync(
             recipientEmail,
@@ -170,6 +173,16 @@ public class AzureCommunicationEmailService : IEmailService
 
     private static async Task<string> LoadTemplateAsync(string templateName)
     {
+        // Check cache first
+        lock (_cacheLock)
+        {
+            if (_templateCache.TryGetValue(templateName, out var cachedTemplate))
+            {
+                return cachedTemplate;
+            }
+        }
+
+        // Load template from embedded resource
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = $"TraliVali.Messaging.Templates.{templateName}";
 
@@ -180,7 +193,18 @@ public class AzureCommunicationEmailService : IEmailService
         }
 
         using var reader = new StreamReader(stream);
-        return await reader.ReadToEndAsync();
+        var template = await reader.ReadToEndAsync();
+
+        // Cache the template
+        lock (_cacheLock)
+        {
+            if (!_templateCache.ContainsKey(templateName))
+            {
+                _templateCache[templateName] = template;
+            }
+        }
+
+        return template;
     }
 
     private static void ValidateEmailParameters(string email, string name)
@@ -189,5 +213,10 @@ public class AzureCommunicationEmailService : IEmailService
             throw new ArgumentNullException(nameof(email));
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentNullException(nameof(name));
+    }
+
+    private static string HtmlEncode(string value)
+    {
+        return WebUtility.HtmlEncode(value);
     }
 }

@@ -23,7 +23,7 @@ public static class EmailServiceExtensions
         services.Configure<AzureCommunicationEmailConfiguration>(
             configuration.GetSection(AzureCommunicationEmailConfiguration.SectionName));
 
-        // Add validation on startup
+        // Add configuration as singleton with validation
         services.AddSingleton<AzureCommunicationEmailConfiguration>(sp =>
         {
             var config = sp.GetRequiredService<IOptions<AzureCommunicationEmailConfiguration>>().Value;
@@ -38,6 +38,9 @@ public static class EmailServiceExtensions
 
         // Register the email service
         services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
+
+        // Register startup validator to ensure configuration is validated at startup
+        services.AddHostedService<EmailConfigurationValidator>();
 
         return services;
     }
