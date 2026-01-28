@@ -380,8 +380,8 @@ public class AuthController : ControllerBase
             {
                 Email = request.Email,
                 DisplayName = request.DisplayName,
-                PasswordHash = string.Empty, // No password for magic link auth
-                PublicKey = string.Empty, // Will be set by client
+                PasswordHash = "N/A", // Passwordless auth using magic links
+                PublicKey = "TBD", // Will be set by client during first login
                 InvitedBy = validationResult.InviterId,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true

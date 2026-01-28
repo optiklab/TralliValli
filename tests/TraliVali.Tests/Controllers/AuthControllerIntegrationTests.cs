@@ -72,6 +72,22 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         _magicLinkService = new MagicLinkService(_redis);
         _inviteService = new InviteService(_dbContext.Invites, "test-signing-key-32-characters-long");
         _mockEmailService = new Mock<IEmailService>();
+        
+        // Setup mock email service to return completed tasks
+        _mockEmailService
+            .Setup(x => x.SendMagicLinkEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        
+        _mockEmailService
+            .Setup(x => x.SendWelcomeEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         // Setup controller
         var logger = new Mock<ILogger<AuthController>>();
@@ -472,7 +488,16 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     public async Task ValidateInvite_ShouldReturnValid_WhenInviteIsValid()
     {
         // Arrange
-        var token = await _inviteService!.GenerateInviteLinkAsync("test-inviter-id", 24);
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
 
         // Act
         var result = await _controller!.ValidateInvite(token);
@@ -502,16 +527,34 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ValidateInvite_ShouldReturnInvalid_WhenInviteIsExpired()
+    public async Task ValidateInvite_ShouldReturnInvalid_WhenInviteIsUsed()
     {
-        // Arrange - Create an invite that's already expired (0 hours)
-        var expiredToken = await _inviteService!.GenerateInviteLinkAsync("test-inviter-id", -1);
-
-        // Give it a moment to ensure it's expired
-        await Task.Delay(100);
+        // Arrange - Create and use an invite
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+        
+        // Mark invite as used
+        var newUser = new User
+        {
+            Email = "newuser@example.com",
+            DisplayName = "New User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        newUser = await _userRepository!.AddAsync(newUser);
+        await _inviteService.RedeemInviteAsync(token, newUser.Id);
 
         // Act
-        var result = await _controller!.ValidateInvite(expiredToken);
+        var result = await _controller!.ValidateInvite(token);
 
         // Assert
         var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
@@ -523,7 +566,16 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     public async Task Register_ShouldCreateUser_WhenInviteIsValid()
     {
         // Arrange
-        var token = await _inviteService!.GenerateInviteLinkAsync("test-inviter-id", 24);
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
         var request = new RegisterRequest
         {
             InviteToken = token,
@@ -547,7 +599,7 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         var createdUser = users.FirstOrDefault();
         Assert.NotNull(createdUser);
         Assert.Equal("New User", createdUser.DisplayName);
-        Assert.Equal("test-inviter-id", createdUser.InvitedBy);
+        Assert.Equal(inviter.Id, createdUser.InvitedBy);
         Assert.True(createdUser.IsActive);
 
         // Verify invite was marked as used
@@ -597,6 +649,16 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     public async Task Register_ShouldReturnBadRequest_WhenUserAlreadyExists()
     {
         // Arrange
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+
         var existingUser = new User
         {
             Email = "existing@example.com",
@@ -607,7 +669,7 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         };
         await _userRepository!.AddAsync(existingUser);
 
-        var token = await _inviteService!.GenerateInviteLinkAsync("test-inviter-id", 24);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
         var request = new RegisterRequest
         {
             InviteToken = token,
@@ -638,7 +700,16 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     public async Task Register_ShouldNotReuseInvite_WhenInviteIsAlreadyUsed()
     {
         // Arrange
-        var token = await _inviteService!.GenerateInviteLinkAsync("test-inviter-id", 24);
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
         
         // First registration
         var firstRequest = new RegisterRequest
