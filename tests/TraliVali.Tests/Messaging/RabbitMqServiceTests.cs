@@ -243,11 +243,12 @@ public class RabbitMqServiceTests : IClassFixture<RabbitMqFixture>
 
         // Assert
         Assert.NotNull(queueNames);
-        Assert.Equal(4, queueNames.Count);
+        Assert.Equal(5, queueNames.Count);
         Assert.Contains("messages.process", queueNames);
         Assert.Contains("files.process", queueNames);
         Assert.Contains("archival.process", queueNames);
         Assert.Contains("backup.process", queueNames);
+        Assert.Contains("messages.process.deadletter", queueNames);
     }
 
     [Fact]
