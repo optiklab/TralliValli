@@ -41,6 +41,9 @@ public class JwtService : IJwtService, IDisposable
             throw new ArgumentException("RefreshTokenExpirationDays must be positive", nameof(settings));
 
         _tokenHandler = new JwtSecurityTokenHandler();
+        // Disable the default claim type mapping to preserve original claim names
+        _tokenHandler.InboundClaimTypeMap.Clear();
+        _tokenHandler.OutboundClaimTypeMap.Clear();
 
         // Load RSA keys
         _privateRsa = RSA.Create();
@@ -227,11 +230,21 @@ public class JwtService : IJwtService, IDisposable
             };
 
             // Blacklist the old refresh token (rotation)
-            var tokenExpiry = validationResult.Principal?.FindFirst(JwtRegisteredClaimNames.Exp)?.Value;
+            // Try to get expiry from standard claim types (JWT library may map 'exp' differently)
+            var tokenExpiry = validationResult.Principal?.FindFirst(JwtRegisteredClaimNames.Exp)?.Value
+                ?? validationResult.Principal?.FindFirst("exp")?.Value
+                ?? validationResult.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Expiration)?.Value;
+            
             if (tokenExpiry != null && long.TryParse(tokenExpiry, out var exp))
             {
                 var expiryDate = DateTimeOffset.FromUnixTimeSeconds(exp).UtcDateTime;
                 await _blacklistService.BlacklistTokenAsync(refreshToken, expiryDate);
+            }
+            else
+            {
+                // Fallback: use configured refresh token expiration if we can't parse the claim
+                var fallbackExpiry = DateTime.UtcNow.AddDays(_settings.RefreshTokenExpirationDays);
+                await _blacklistService.BlacklistTokenAsync(refreshToken, fallbackExpiry);
             }
 
             // Generate new tokens

@@ -30,6 +30,9 @@ public class JwtServiceTests
         _mockBlacklistService
             .Setup(x => x.IsTokenBlacklistedAsync(It.IsAny<string>()))
             .ReturnsAsync(false);
+        _mockBlacklistService
+            .Setup(x => x.BlacklistTokenAsync(It.IsAny<string>(), It.IsAny<DateTime>()))
+            .Returns(Task.CompletedTask);
 
         _jwtService = new JwtService(_settings, _mockBlacklistService.Object);
     }
