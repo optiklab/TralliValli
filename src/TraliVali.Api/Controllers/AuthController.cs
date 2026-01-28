@@ -153,9 +153,17 @@ public class AuthController : ControllerBase
                 return Unauthorized(new { message = "Invalid or expired magic link." });
             }
 
-            // Update last login time
-            user.LastLoginAt = DateTime.UtcNow;
-            await _userRepository.UpdateAsync(user.Id, user, cancellationToken);
+            // Update last login time (best effort - don't fail if update fails)
+            try
+            {
+                user.LastLoginAt = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user.Id, user, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update last login time for user: {Email}", user.Email);
+                // Continue anyway - this is not critical
+            }
 
             // Generate JWT tokens
             var tokenResult = _jwtService.GenerateToken(user, magicLink.DeviceId);
