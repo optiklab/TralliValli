@@ -46,6 +46,12 @@ public class AuthController : ControllerBase
     /// <param name="request">The magic link request</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Success message</returns>
+    /// <remarks>
+    /// TODO: Add rate limiting in production to prevent:
+    /// - Email spam attacks
+    /// - User enumeration via timing attacks
+    /// Consider implementing rate limiting per IP address and per email address.
+    /// </remarks>
     [HttpPost("request-magic-link")]
     [ProducesResponseType(typeof(RequestMagicLinkResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

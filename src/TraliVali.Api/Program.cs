@@ -46,10 +46,20 @@ try
         ConnectionMultiplexer.Connect(redisConnectionString));
 
     // Configure JWT Settings
+    var jwtPrivateKey = builder.Configuration.GetValue<string>("Jwt:PrivateKey") 
+        ?? Environment.GetEnvironmentVariable("JWT_PRIVATE_KEY") ?? "";
+    var jwtPublicKey = builder.Configuration.GetValue<string>("Jwt:PublicKey") 
+        ?? Environment.GetEnvironmentVariable("JWT_PUBLIC_KEY") ?? "";
+    
+    if (string.IsNullOrWhiteSpace(jwtPrivateKey) || string.IsNullOrWhiteSpace(jwtPublicKey))
+    {
+        throw new InvalidOperationException("JWT keys are required. Please configure Jwt:PrivateKey and Jwt:PublicKey in appsettings.json or set JWT_PRIVATE_KEY and JWT_PUBLIC_KEY environment variables.");
+    }
+    
     var jwtSettings = new JwtSettings
     {
-        PrivateKey = builder.Configuration.GetValue<string>("Jwt:PrivateKey") ?? "",
-        PublicKey = builder.Configuration.GetValue<string>("Jwt:PublicKey") ?? "",
+        PrivateKey = jwtPrivateKey,
+        PublicKey = jwtPublicKey,
         Issuer = builder.Configuration.GetValue<string>("Jwt:Issuer") ?? "TraliVali",
         Audience = builder.Configuration.GetValue<string>("Jwt:Audience") ?? "TraliVali",
         ExpirationDays = builder.Configuration.GetValue<int>("Jwt:ExpirationDays", 7),
@@ -58,10 +68,20 @@ try
     builder.Services.AddSingleton(jwtSettings);
 
     // Configure Azure Communication Email Service
+    var emailConnectionString = builder.Configuration.GetValue<string>("AzureCommunicationEmail:ConnectionString") 
+        ?? Environment.GetEnvironmentVariable("AZURE_COMMUNICATION_EMAIL_CONNECTION_STRING") ?? "";
+    var emailSenderAddress = builder.Configuration.GetValue<string>("AzureCommunicationEmail:SenderAddress") 
+        ?? Environment.GetEnvironmentVariable("EMAIL_SENDER_ADDRESS") ?? "";
+    
+    if (string.IsNullOrWhiteSpace(emailConnectionString) || string.IsNullOrWhiteSpace(emailSenderAddress))
+    {
+        Log.Warning("Azure Communication Email is not configured. Email functionality will not work. Please configure AzureCommunicationEmail:ConnectionString and AzureCommunicationEmail:SenderAddress.");
+    }
+    
     var emailConfig = new AzureCommunicationEmailConfiguration
     {
-        ConnectionString = builder.Configuration.GetValue<string>("AzureCommunicationEmail:ConnectionString") ?? "",
-        SenderAddress = builder.Configuration.GetValue<string>("AzureCommunicationEmail:SenderAddress") ?? "",
+        ConnectionString = emailConnectionString,
+        SenderAddress = emailSenderAddress,
         SenderName = builder.Configuration.GetValue<string>("AzureCommunicationEmail:SenderName") ?? "TraliVali"
     };
     builder.Services.AddSingleton(emailConfig);
@@ -72,8 +92,8 @@ try
     builder.Services.AddSingleton<IMagicLinkService, MagicLinkService>();
     builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
 
-    // Register repositories
-    builder.Services.AddSingleton<IRepository<User>, UserRepository>();
+    // Register repositories as scoped for better thread safety
+    builder.Services.AddScoped<IRepository<User>, UserRepository>();
 
     var app = builder.Build();
 
@@ -88,6 +108,12 @@ try
     app.UseSerilogRequestLogging();
 
     app.UseHttpsRedirection();
+
+    // Add authentication and authorization
+    // Note: JWT validation will be automatically handled by these middleware
+    // once AddAuthentication and AddJwtBearer are configured
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     // Map controllers
     app.MapControllers();
