@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Moq;
@@ -10,24 +11,41 @@ using TraliVali.Workers.Models;
 namespace TraliVali.Tests.Workers;
 
 /// <summary>
+/// Mock SignalR hub for testing
+/// </summary>
+public class TestHub : Hub<ITestClient>
+{
+}
+
+/// <summary>
+/// Mock SignalR client interface for testing
+/// </summary>
+public interface ITestClient
+{
+    Task ReceiveMessage(string conversationId, string messageId, string senderId, string senderName, string content, DateTime timestamp);
+}
+
+/// <summary>
 /// Tests for MessageProcessorWorker
-/// Note: Full integration tests for message processing require SignalR hub connectivity.
+/// Note: Full integration tests for message processing require actual MongoDB and SignalR.
 /// These tests focus on constructor validation and basic structure verification.
 /// </summary>
 public class MessageProcessorWorkerTests : IDisposable
 {
     private readonly Mock<IMessageConsumer> _mockConsumer;
     private readonly Mock<IMessagePublisher> _mockPublisher;
-    private readonly Mock<ILogger<MessageProcessorWorker>> _mockLogger;
+    private readonly Mock<ILogger<MessageProcessorWorker<TestHub, ITestClient>>> _mockLogger;
     private readonly MessageProcessorWorkerConfiguration _configuration;
     private readonly Mock<IMongoCollection<Message>> _mockMessageCollection;
     private readonly Mock<IMongoCollection<Conversation>> _mockConversationCollection;
+    private readonly Mock<IHubContext<TestHub, ITestClient>> _mockHubContext;
 
     public MessageProcessorWorkerTests()
     {
         _mockConsumer = new Mock<IMessageConsumer>();
         _mockPublisher = new Mock<IMessagePublisher>();
-        _mockLogger = new Mock<ILogger<MessageProcessorWorker>>();
+        _mockLogger = new Mock<ILogger<MessageProcessorWorker<TestHub, ITestClient>>>();
+        _mockHubContext = new Mock<IHubContext<TestHub, ITestClient>>();
         
         // Create mock collections
         _mockMessageCollection = new Mock<IMongoCollection<Message>>();
@@ -35,7 +53,6 @@ public class MessageProcessorWorkerTests : IDisposable
 
         _configuration = new MessageProcessorWorkerConfiguration
         {
-            SignalRHubUrl = "http://localhost:5000/hubs/chat",
             DeadLetterQueueName = "messages.process.deadletter",
             MaxRetryAttempts = 3
         };
@@ -45,11 +62,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenConsumerIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             null!,
             _mockPublisher.Object,
             _mockMessageCollection.Object,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             _configuration,
             _mockLogger.Object));
     }
@@ -58,11 +76,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenPublisherIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             null!,
             _mockMessageCollection.Object,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             _configuration,
             _mockLogger.Object));
     }
@@ -71,11 +90,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenMessagesCollectionIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             _mockPublisher.Object,
             null!,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             _configuration,
             _mockLogger.Object));
     }
@@ -84,10 +104,25 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenConversationsCollectionIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             _mockPublisher.Object,
             _mockMessageCollection.Object,
+            null!,
+            _mockHubContext.Object,
+            _configuration,
+            _mockLogger.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentNullException_WhenHubContextIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
+            _mockConsumer.Object,
+            _mockPublisher.Object,
+            _mockMessageCollection.Object,
+            _mockConversationCollection.Object,
             null!,
             _configuration,
             _mockLogger.Object));
@@ -97,11 +132,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenConfigurationIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             _mockPublisher.Object,
             _mockMessageCollection.Object,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             null!,
             _mockLogger.Object));
     }
@@ -110,11 +146,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldThrowArgumentNullException_WhenLoggerIsNull()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker(
+        Assert.Throws<ArgumentNullException>(() => new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             _mockPublisher.Object,
             _mockMessageCollection.Object,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             _configuration,
             null!));
     }
@@ -123,11 +160,12 @@ public class MessageProcessorWorkerTests : IDisposable
     public void Constructor_ShouldCreateWorkerSuccessfully_WhenAllParametersAreValid()
     {
         // Act
-        var worker = new MessageProcessorWorker(
+        var worker = new MessageProcessorWorker<TestHub, ITestClient>(
             _mockConsumer.Object,
             _mockPublisher.Object,
             _mockMessageCollection.Object,
             _mockConversationCollection.Object,
+            _mockHubContext.Object,
             _configuration,
             _mockLogger.Object);
 
@@ -170,7 +208,6 @@ public class MessageProcessorWorkerTests : IDisposable
         var config = new MessageProcessorWorkerConfiguration();
 
         // Assert
-        Assert.Equal("http://localhost:5000/hubs/chat", config.SignalRHubUrl);
         Assert.Equal("messages.process.deadletter", config.DeadLetterQueueName);
         Assert.Equal(3, config.MaxRetryAttempts);
     }

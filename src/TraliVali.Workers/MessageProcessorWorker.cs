@@ -1,10 +1,9 @@
 using System.Text.Json;
-using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using TraliVali.Domain.Entities;
-using TraliVali.Infrastructure.Data;
 using TraliVali.Infrastructure.Messaging;
 using TraliVali.Workers.Models;
 
@@ -15,11 +14,6 @@ namespace TraliVali.Workers;
 /// </summary>
 public class MessageProcessorWorkerConfiguration
 {
-    /// <summary>
-    /// Gets or sets the SignalR hub URL
-    /// </summary>
-    public string SignalRHubUrl { get; set; } = "http://localhost:5000/hubs/chat";
-
     /// <summary>
     /// Gets or sets the dead-letter queue name
     /// </summary>
@@ -34,24 +28,29 @@ public class MessageProcessorWorkerConfiguration
 /// <summary>
 /// Background worker that processes messages from the message queue
 /// </summary>
-public class MessageProcessorWorker : BackgroundService
+/// <typeparam name="THub">The SignalR hub type</typeparam>
+/// <typeparam name="TClient">The SignalR client interface type</typeparam>
+public class MessageProcessorWorker<THub, TClient> : BackgroundService
+    where THub : Hub<TClient>
+    where TClient : class
 {
     private const string QueueName = "messages.process";
     private readonly IMessageConsumer _messageConsumer;
     private readonly IMessagePublisher _messagePublisher;
     private readonly IMongoCollection<Message> _messagesCollection;
     private readonly IMongoCollection<Conversation> _conversationsCollection;
-    private readonly ILogger<MessageProcessorWorker> _logger;
+    private readonly IHubContext<THub, TClient> _hubContext;
+    private readonly ILogger<MessageProcessorWorker<THub, TClient>> _logger;
     private readonly MessageProcessorWorkerConfiguration _configuration;
-    private HubConnection? _hubConnection;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="MessageProcessorWorker"/> class
+    /// Initializes a new instance of the <see cref="MessageProcessorWorker{THub, TClient}"/> class
     /// </summary>
     /// <param name="messageConsumer">The message consumer</param>
     /// <param name="messagePublisher">The message publisher</param>
     /// <param name="messagesCollection">The messages collection</param>
     /// <param name="conversationsCollection">The conversations collection</param>
+    /// <param name="hubContext">The SignalR hub context</param>
     /// <param name="configuration">The worker configuration</param>
     /// <param name="logger">The logger instance</param>
     public MessageProcessorWorker(
@@ -59,13 +58,15 @@ public class MessageProcessorWorker : BackgroundService
         IMessagePublisher messagePublisher,
         IMongoCollection<Message> messagesCollection,
         IMongoCollection<Conversation> conversationsCollection,
+        IHubContext<THub, TClient> hubContext,
         MessageProcessorWorkerConfiguration configuration,
-        ILogger<MessageProcessorWorker> logger)
+        ILogger<MessageProcessorWorker<THub, TClient>> logger)
     {
         _messageConsumer = messageConsumer ?? throw new ArgumentNullException(nameof(messageConsumer));
         _messagePublisher = messagePublisher ?? throw new ArgumentNullException(nameof(messagePublisher));
         _messagesCollection = messagesCollection ?? throw new ArgumentNullException(nameof(messagesCollection));
         _conversationsCollection = conversationsCollection ?? throw new ArgumentNullException(nameof(conversationsCollection));
+        _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -81,9 +82,6 @@ public class MessageProcessorWorker : BackgroundService
 
         try
         {
-            // Initialize SignalR connection
-            await InitializeSignalRConnectionAsync(stoppingToken);
-
             // Start consuming messages
             await _messageConsumer.StartConsumingAsync(QueueName, ProcessMessageAsync, stoppingToken);
 
@@ -104,48 +102,74 @@ public class MessageProcessorWorker : BackgroundService
     }
 
     /// <summary>
-    /// Initializes the SignalR connection
-    /// </summary>
-    /// <param name="cancellationToken">Cancellation token</param>
-    private async Task InitializeSignalRConnectionAsync(CancellationToken cancellationToken)
-    {
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(_configuration.SignalRHubUrl)
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.Closed += async (error) =>
-        {
-            _logger.LogWarning(error, "SignalR connection closed. Attempting to reconnect...");
-            await Task.Delay(5000, cancellationToken);
-            try
-            {
-                await _hubConnection.StartAsync(cancellationToken);
-                _logger.LogInformation("SignalR connection re-established");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to reconnect to SignalR");
-            }
-        };
-
-        try
-        {
-            await _hubConnection.StartAsync(cancellationToken);
-            _logger.LogInformation("SignalR connection established to {HubUrl}", _configuration.SignalRHubUrl);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to connect to SignalR hub at {HubUrl}", _configuration.SignalRHubUrl);
-            throw;
-        }
-    }
-
-    /// <summary>
     /// Processes a message from the queue
     /// </summary>
     /// <param name="messageJson">The message JSON payload</param>
     private async Task ProcessMessageAsync(string messageJson)
+    {
+        try
+        {
+            _logger.LogDebug("Processing message: {MessageJson}", messageJson);
+
+            // Deserialize the message payload
+            var payload = JsonSerializer.Deserialize<MessageQueuePayload>(messageJson);
+            if (payload == null)
+            {
+                _logger.LogError("Failed to deserialize message payload");
+                await SendToDeadLetterQueueAsync(messageJson, "Failed to deserialize payload");
+                return;
+            }
+
+            // Create message entity
+            var message = new Message
+            {
+                ConversationId = payload.ConversationId,
+                SenderId = payload.SenderId,
+                Type = payload.Type,
+                Content = payload.Content,
+                EncryptedContent = payload.EncryptedContent ?? string.Empty,
+                ReplyTo = payload.ReplyTo,
+                Attachments = payload.Attachments,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Validate message
+            var validationErrors = message.Validate();
+            if (validationErrors.Count > 0)
+            {
+                _logger.LogError("Message validation failed: {Errors}", string.Join(", ", validationErrors));
+                await SendToDeadLetterQueueAsync(messageJson, $"Validation failed: {string.Join(", ", validationErrors)}");
+                return;
+            }
+
+            // TODO: Phase 5 - Implement encryption
+            // For now, just log that encryption would happen here
+            _logger.LogDebug("Encryption placeholder - would encrypt content here in Phase 5");
+
+            // Process the message with retry logic for transient failures
+            await ProcessMessageWithRetryAsync(message, payload.SenderName);
+
+            _logger.LogInformation("Successfully processed message {MessageId} for conversation {ConversationId}",
+                message.Id, message.ConversationId);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize message");
+            await SendToDeadLetterQueueAsync(messageJson, $"Deserialization error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error processing message");
+            await SendToDeadLetterQueueAsync(messageJson, $"Unexpected error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Processes a message with retry logic for transient failures
+    /// </summary>
+    /// <param name="message">The message to process</param>
+    /// <param name="senderName">The sender's display name</param>
+    private async Task ProcessMessageWithRetryAsync(Message message, string senderName)
     {
         var retryCount = 0;
         Exception? lastException = null;
@@ -154,42 +178,16 @@ public class MessageProcessorWorker : BackgroundService
         {
             try
             {
-                _logger.LogDebug("Processing message: {MessageJson}", messageJson);
+                // Check if message already exists (idempotency)
+                var existingMessage = await _messagesCollection
+                    .Find(m => m.Id == message.Id)
+                    .FirstOrDefaultAsync();
 
-                // Deserialize the message payload
-                var payload = JsonSerializer.Deserialize<MessageQueuePayload>(messageJson);
-                if (payload == null)
+                if (existingMessage != null)
                 {
-                    _logger.LogError("Failed to deserialize message payload");
-                    await SendToDeadLetterQueueAsync(messageJson, "Failed to deserialize payload");
+                    _logger.LogInformation("Message {MessageId} already exists, skipping insert", message.Id);
                     return;
                 }
-
-                // Create message entity
-                var message = new Message
-                {
-                    ConversationId = payload.ConversationId,
-                    SenderId = payload.SenderId,
-                    Type = payload.Type,
-                    Content = payload.Content,
-                    EncryptedContent = payload.EncryptedContent ?? string.Empty,
-                    ReplyTo = payload.ReplyTo,
-                    Attachments = payload.Attachments,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                // Validate message
-                var validationErrors = message.Validate();
-                if (validationErrors.Count > 0)
-                {
-                    _logger.LogError("Message validation failed: {Errors}", string.Join(", ", validationErrors));
-                    await SendToDeadLetterQueueAsync(messageJson, $"Validation failed: {string.Join(", ", validationErrors)}");
-                    return;
-                }
-
-                // TODO: Phase 5 - Implement encryption
-                // For now, just log that encryption would happen here
-                _logger.LogDebug("Encryption placeholder - would encrypt content here in Phase 5");
 
                 // Persist to MongoDB
                 await _messagesCollection.InsertOneAsync(message);
@@ -199,18 +197,21 @@ public class MessageProcessorWorker : BackgroundService
                 await UpdateConversationRecentMessagesAsync(message.ConversationId, message.Id);
 
                 // Broadcast via SignalR to conversation participants
-                await BroadcastMessageAsync(message, payload.SenderName);
-
-                _logger.LogInformation("Successfully processed message {MessageId} for conversation {ConversationId}", 
-                    message.Id, message.ConversationId);
+                await BroadcastMessageAsync(message, senderName);
 
                 return; // Success - exit the retry loop
+            }
+            catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+            {
+                // Message already exists (race condition), treat as success
+                _logger.LogInformation("Message {MessageId} already exists (duplicate key), treating as success", message.Id);
+                return;
             }
             catch (Exception ex)
             {
                 lastException = ex;
                 retryCount++;
-                _logger.LogWarning(ex, "Error processing message (attempt {RetryCount}/{MaxRetries})", 
+                _logger.LogWarning(ex, "Error processing message (attempt {RetryCount}/{MaxRetries})",
                     retryCount, _configuration.MaxRetryAttempts);
 
                 if (retryCount < _configuration.MaxRetryAttempts)
@@ -223,6 +224,7 @@ public class MessageProcessorWorker : BackgroundService
 
         // If we get here, all retries failed
         _logger.LogError(lastException, "Failed to process message after {MaxRetries} attempts", _configuration.MaxRetryAttempts);
+        var messageJson = JsonSerializer.Serialize(message);
         await SendToDeadLetterQueueAsync(messageJson, $"Processing failed after {_configuration.MaxRetryAttempts} attempts: {lastException?.Message}");
     }
 
@@ -234,7 +236,7 @@ public class MessageProcessorWorker : BackgroundService
     private async Task UpdateConversationRecentMessagesAsync(string conversationId, string messageId)
     {
         var filter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
-        
+
         // Get the current conversation to check recentMessages
         var conversation = await _conversationsCollection.Find(filter).FirstOrDefaultAsync();
         if (conversation == null)
@@ -252,7 +254,7 @@ public class MessageProcessorWorker : BackgroundService
             .Set(c => c.LastMessageAt, DateTime.UtcNow);
 
         var result = await _conversationsCollection.UpdateOneAsync(filter, update);
-        
+
         if (result.ModifiedCount > 0)
         {
             _logger.LogDebug("Updated recentMessages for conversation {ConversationId}", conversationId);
@@ -270,32 +272,22 @@ public class MessageProcessorWorker : BackgroundService
     /// <param name="senderName">The sender's display name</param>
     private async Task BroadcastMessageAsync(Message message, string senderName)
     {
-        if (_hubConnection == null || _hubConnection.State != HubConnectionState.Connected)
-        {
-            _logger.LogWarning("SignalR connection is not active, cannot broadcast message {MessageId}", message.Id);
-            return;
-        }
-
         try
         {
-            // Get the conversation to find participants
-            var conversation = await _conversationsCollection
-                .Find(c => c.Id == message.ConversationId)
-                .FirstOrDefaultAsync();
-
-            if (conversation == null)
-            {
-                _logger.LogWarning("Conversation {ConversationId} not found for message broadcast", message.ConversationId);
-                return;
-            }
-
+            // Cast to IClientProxy to use SendAsync extension method
+            var clients = (IClientProxy)_hubContext.Clients.Group(message.ConversationId);
+            
             // Broadcast to all participants in the conversation group
-            await _hubConnection.InvokeAsync("SendMessage",
+            await clients.SendAsync(
+                "ReceiveMessage",
                 message.ConversationId,
                 message.Id,
-                message.Content);
+                message.SenderId,
+                senderName,
+                message.Content,
+                message.CreatedAt);
 
-            _logger.LogDebug("Broadcasted message {MessageId} to conversation {ConversationId} participants", 
+            _logger.LogDebug("Broadcasted message {MessageId} to conversation {ConversationId} participants",
                 message.Id, message.ConversationId);
         }
         catch (Exception ex)
@@ -323,7 +315,7 @@ public class MessageProcessorWorker : BackgroundService
 
             var deadLetterJson = JsonSerializer.Serialize(deadLetterPayload);
             await _messagePublisher.PublishAsync(_configuration.DeadLetterQueueName, deadLetterJson);
-            
+
             _logger.LogWarning("Sent message to dead-letter queue: {Reason}", reason);
         }
         catch (Exception ex)
@@ -333,18 +325,14 @@ public class MessageProcessorWorker : BackgroundService
     }
 
     /// <summary>
-    /// Disposes the worker resources
+    /// Stops the worker and cleans up resources
     /// </summary>
-    public override void Dispose()
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A task representing the async operation</returns>
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
+        _logger.LogInformation("MessageProcessorWorker stopping...");
         _messageConsumer.StopConsuming();
-        
-        if (_hubConnection != null)
-        {
-            _hubConnection.StopAsync().GetAwaiter().GetResult();
-            _hubConnection.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
-
-        base.Dispose();
+        await base.StopAsync(cancellationToken);
     }
 }
