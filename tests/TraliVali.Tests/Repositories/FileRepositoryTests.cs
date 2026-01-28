@@ -25,9 +25,13 @@ public class FileRepositoryTests : IClassFixture<MongoDbFixture>
         await _fixture.CleanupAsync();
         var file = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = "507f1f77bcf86cd799439011",
             FileName = "test.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 1024,
+            BlobPath = "/storage/test.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/test.pdf",
             UploadedBy = "507f1f77bcf86cd799439011",
             IsDeleted = false
@@ -51,25 +55,37 @@ public class FileRepositoryTests : IClassFixture<MongoDbFixture>
         var uploaderId = "507f1f77bcf86cd799439011";
         var file1 = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = uploaderId,
             FileName = "file1.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 1024,
+            BlobPath = "/storage/file1.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/file1.pdf",
             UploadedBy = uploaderId
         };
         var file2 = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = uploaderId,
             FileName = "file2.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 2048,
+            BlobPath = "/storage/file2.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/file2.pdf",
             UploadedBy = uploaderId
         };
         var file3 = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = "507f1f77bcf86cd799439012",
             FileName = "file3.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 512,
+            BlobPath = "/storage/file3.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/file3.pdf",
             UploadedBy = "507f1f77bcf86cd799439012"
         };
@@ -94,18 +110,26 @@ public class FileRepositoryTests : IClassFixture<MongoDbFixture>
         await _fixture.CleanupAsync();
         var file1 = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = "507f1f77bcf86cd799439011",
             FileName = "active.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 1024,
+            BlobPath = "/storage/active.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/active.pdf",
             UploadedBy = "507f1f77bcf86cd799439011",
             IsDeleted = false
         };
         var file2 = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = "507f1f77bcf86cd799439011",
             FileName = "deleted.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 2048,
+            BlobPath = "/storage/deleted.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/deleted.pdf",
             UploadedBy = "507f1f77bcf86cd799439011",
             IsDeleted = true
@@ -130,9 +154,13 @@ public class FileRepositoryTests : IClassFixture<MongoDbFixture>
         await _fixture.CleanupAsync();
         var file = new Domain.Entities.File
         {
+            ConversationId = "507f1f77bcf86cd799439010",
+            UploaderId = "507f1f77bcf86cd799439011",
             FileName = "test.pdf",
-            ContentType = "application/pdf",
+            MimeType = "application/pdf",
             Size = 1024,
+            BlobPath = "/storage/test.pdf",
+            ContentType = "application/pdf",
             StoragePath = "/storage/test.pdf",
             UploadedBy = "507f1f77bcf86cd799439011",
             IsDeleted = false

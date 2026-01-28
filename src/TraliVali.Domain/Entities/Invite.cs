@@ -30,9 +30,9 @@ public class Invite
     /// <summary>
     /// Gets or sets the user identifier who created the invite
     /// </summary>
-    [BsonElement("invitedBy")]
+    [BsonElement("inviterId")]
     [BsonRepresentation(BsonType.ObjectId)]
-    public string InvitedBy { get; set; } = string.Empty;
+    public string InviterId { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the date and time when the invite was created
@@ -47,6 +47,13 @@ public class Invite
     public DateTime ExpiresAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the user identifier who used the invite
+    /// </summary>
+    [BsonElement("usedBy")]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string? UsedBy { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether the invite has been used
     /// </summary>
     [BsonElement("isUsed")]
@@ -57,4 +64,48 @@ public class Invite
     /// </summary>
     [BsonElement("usedAt")]
     public DateTime? UsedAt { get; set; }
+
+    /// <summary>
+    /// Validates the invite entity
+    /// </summary>
+    /// <returns>A list of validation error messages, empty if valid</returns>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(Token))
+            errors.Add("Token is required");
+
+        if (string.IsNullOrWhiteSpace(Email))
+            errors.Add("Email is required");
+        else if (!IsValidEmail(Email))
+            errors.Add("Email format is invalid");
+
+        if (string.IsNullOrWhiteSpace(InviterId))
+            errors.Add("InviterId is required");
+
+        if (ExpiresAt <= CreatedAt)
+            errors.Add("ExpiresAt must be after CreatedAt");
+
+        if (IsUsed && string.IsNullOrWhiteSpace(UsedBy))
+            errors.Add("UsedBy is required when invite is used");
+
+        if (IsUsed && UsedAt == null)
+            errors.Add("UsedAt is required when invite is used");
+
+        return errors;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

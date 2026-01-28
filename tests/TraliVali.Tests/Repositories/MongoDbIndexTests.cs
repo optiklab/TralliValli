@@ -156,14 +156,14 @@ public class MongoDbIndexTests : IClassFixture<MongoDbFixture>
         {
             Token = token,
             Email = "user1@example.com",
-            InvitedBy = "507f1f77bcf86cd799439011",
+            InviterId = "507f1f77bcf86cd799439011",
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
         var invite2 = new Invite
         {
             Token = token,
             Email = "user2@example.com",
-            InvitedBy = "507f1f77bcf86cd799439012",
+            InviterId = "507f1f77bcf86cd799439012",
             ExpiresAt = DateTime.UtcNow.AddDays(7)
         };
 
