@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore TraliVali.slnx
+      
+    - name: Build
+      run: dotnet build TraliVali.slnx --no-restore --configuration Release
+      
+    - name: Test
+      run: dotnet test TraliVali.slnx --no-build --configuration Release --verbosity normal --logger trx --results-directory ./TestResults
+      
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults
