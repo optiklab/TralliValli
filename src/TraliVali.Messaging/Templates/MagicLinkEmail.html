@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Link Authentication</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .content p {
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        .button {
+            display: inline-block;
+            padding: 14px 32px;
+            background-color: #3498db;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: 600;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .button-container {
+            text-align: center;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #777;
+            text-align: center;
+        }
+        .security-notice {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 TraliVali Authentication</h1>
+        </div>
+        <div class="content">
+            <p>Hi {{RecipientName}},</p>
+            <p>You requested to sign in to your TraliVali account. Click the button below to authenticate:</p>
+            
+            <div class="button-container">
+                <a href="{{MagicLink}}" class="button">Sign In to TraliVali</a>
+            </div>
+            
+            <div class="security-notice">
+                <strong>⚠️ Security Notice:</strong> This link will expire in 15 minutes. If you didn't request this link, you can safely ignore this email.
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #3498db;">{{MagicLink}}</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message from TraliVali.</p>
+            <p>© 2026 TraliVali. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
