@@ -42,6 +42,7 @@ This document describes how to set up and use the Docker Compose environment for
 - **Management:** Connect using MongoDB Compass or mongosh
 - **Connection String:** `mongodb://admin:password@localhost:27017/tralivali?authSource=admin`
 - **Data Persistence:** Volumes for `/data/db` and `/data/configdb`
+- **Note:** Uses `latest` tag for development convenience. For production, use a specific version tag (e.g., `mongo:7.0`)
 
 ### RabbitMQ
 - **Image:** `rabbitmq:3-management`
@@ -54,7 +55,7 @@ This document describes how to set up and use the Docker Compose environment for
 ### Redis
 - **Image:** `redis:7-alpine`
 - **Port:** 6379 (configurable via `REDIS_PORT`)
-- **Connection:** `redis-cli -h localhost -p 6379 -a password`
+- **Connection:** Use `REDISCLI_AUTH` environment variable: `REDISCLI_AUTH=password redis-cli -h localhost -p 6379`
 - **Data Persistence:** Volume for `/data` with AOF (Append Only File) enabled
 
 ## Health Checks
@@ -63,7 +64,7 @@ All services are configured with health checks:
 
 - **MongoDB:** Pings the database every 10 seconds
 - **RabbitMQ:** Uses `rabbitmq-diagnostics -q ping` every 10 seconds
-- **Redis:** Increments a counter every 10 seconds
+- **Redis:** Uses authenticated PING command every 10 seconds
 
 Services are considered healthy after passing their health checks, which typically takes 20-30 seconds after startup.
 
@@ -71,11 +72,11 @@ Services are considered healthy after passing their health checks, which typical
 
 All service data is persisted using Docker volumes:
 
-- `trallivalli_mongodb_data` - MongoDB database files
-- `trallivalli_mongodb_config` - MongoDB configuration
-- `trallivalli_rabbitmq_data` - RabbitMQ data and messages
-- `trallivalli_rabbitmq_logs` - RabbitMQ logs
-- `trallivalli_redis_data` - Redis data with AOF
+- `tralivali_mongodb_data` - MongoDB database files
+- `tralivali_mongodb_config` - MongoDB configuration
+- `tralivali_rabbitmq_data` - RabbitMQ data and messages
+- `tralivali_rabbitmq_logs` - RabbitMQ logs
+- `tralivali_redis_data` - Redis data with AOF
 
 Data persists across container restarts. To completely remove all data:
 
@@ -129,8 +130,8 @@ docker compose restart redis
 # MongoDB shell
 docker exec -it tralivali-mongodb mongosh
 
-# Redis CLI
-docker exec -it tralivali-redis redis-cli -a password
+# Redis CLI (using REDISCLI_AUTH environment variable for security)
+docker exec -it -e REDISCLI_AUTH=password tralivali-redis redis-cli
 
 # RabbitMQ management commands
 docker exec -it tralivali-rabbitmq rabbitmqctl status

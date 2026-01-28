@@ -49,6 +49,7 @@ Successfully created a complete Docker Compose setup for local development with 
   - `mongodb_data` → `/data/db`
   - `mongodb_config` → `/data/configdb`
 - **Connection String:** `mongodb://admin:password@localhost:27017/tralivali?authSource=admin`
+- **Note:** Uses `latest` tag for development convenience. For production, pin to a specific version (e.g., `mongo:7.0`)
 
 ### RabbitMQ
 - **Image:** `rabbitmq:3-management`
@@ -66,7 +67,7 @@ Successfully created a complete Docker Compose setup for local development with 
 - **Port:** 6379 (configurable)
 - **Authentication:** Password-protected
 - **Persistence:** AOF (Append Only File) enabled
-- **Health Check:** Redis ping command every 10 seconds
+- **Health Check:** Authenticated Redis PING command every 10 seconds
 - **Volume:** `redis_data` → `/data`
 
 ## Features
@@ -148,7 +149,7 @@ docker compose down
 ### Accessing Services
 - **MongoDB:** `mongosh "mongodb://admin:password@localhost:27017/tralivali?authSource=admin"`
 - **RabbitMQ Management:** http://localhost:15672 (admin/password)
-- **Redis CLI:** `redis-cli -h localhost -p 6379 -a password`
+- **Redis CLI:** `REDISCLI_AUTH=password redis-cli -h localhost -p 6379`
 
 ## Acceptance Criteria - All Met ✅
 
@@ -184,9 +185,10 @@ The Docker Compose environment is ready for:
 ## Notes
 
 - Docker Compose v2 syntax used (no `version` field needed)
-- All images use specific tags/versions (latest, 3-management, 7-alpine)
+- MongoDB uses `latest` tag for development convenience; other services use specific versions (rabbitmq:3-management, redis:7-alpine)
+- For production, use specific version tags for all services (e.g., mongo:7.0, mongo:8.0)
 - Services configured with restart policy: `unless-stopped`
 - Container names prefixed with `tralivali-` for easy identification
-- Volumes prefixed with `trallivalli_` automatically by Docker Compose
+- Volumes prefixed with `tralivali_` automatically by Docker Compose (note: project name is tralivali without double 'l')
 
 All acceptance criteria from Issue #4 have been met! ✅

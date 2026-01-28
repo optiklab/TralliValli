@@ -48,13 +48,15 @@ services:
     image: redis:7-alpine
     container_name: tralivali-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:-password} --appendonly yes
+    command: sh -c "redis-server --requirepass $${REDIS_PASSWORD:-password} --appendonly yes"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-password}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping"]
       interval: 10s
       timeout: 5s
       retries: 5
