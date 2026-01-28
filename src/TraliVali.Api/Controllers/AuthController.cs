@@ -18,6 +18,8 @@ public class AuthController : ControllerBase
     private readonly IJwtService _jwtService;
     private readonly ITokenBlacklistService _tokenBlacklistService;
     private readonly IRepository<User> _userRepository;
+    private readonly IRepository<Invite> _inviteRepository;
+    private readonly IInviteService _inviteService;
     private readonly IEmailService _emailService;
     private readonly ILogger<AuthController> _logger;
 
@@ -29,6 +31,8 @@ public class AuthController : ControllerBase
         IJwtService jwtService,
         ITokenBlacklistService tokenBlacklistService,
         IRepository<User> userRepository,
+        IRepository<Invite> inviteRepository,
+        IInviteService inviteService,
         IEmailService emailService,
         ILogger<AuthController> logger)
     {
@@ -36,6 +40,8 @@ public class AuthController : ControllerBase
         _jwtService = jwtService ?? throw new ArgumentNullException(nameof(jwtService));
         _tokenBlacklistService = tokenBlacklistService ?? throw new ArgumentNullException(nameof(tokenBlacklistService));
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _inviteRepository = inviteRepository ?? throw new ArgumentNullException(nameof(inviteRepository));
+        _inviteService = inviteService ?? throw new ArgumentNullException(nameof(inviteService));
         _emailService = emailService ?? throw new ArgumentNullException(nameof(emailService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -278,6 +284,172 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during logout");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+        }
+    }
+
+    /// <summary>
+    /// Validates an invite token
+    /// </summary>
+    /// <param name="token">The invite token to validate</param>
+    /// <returns>Validation result</returns>
+    [HttpGet("invite/{token}")]
+    [ProducesResponseType(typeof(ValidateInviteResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ValidateInvite(string token)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return NotFound(new ValidateInviteResponse
+                {
+                    IsValid = false,
+                    Message = "Invalid invite token."
+                });
+            }
+
+            var validationResult = await _inviteService.ValidateInviteAsync(token);
+
+            if (validationResult == null)
+            {
+                _logger.LogWarning("Invite validation failed for token");
+                return NotFound(new ValidateInviteResponse
+                {
+                    IsValid = false,
+                    Message = "Invalid or expired invite token."
+                });
+            }
+
+            _logger.LogInformation("Invite validated successfully");
+
+            return Ok(new ValidateInviteResponse
+            {
+                IsValid = true,
+                ExpiresAt = validationResult.ExpiresAt,
+                Message = "Invite is valid."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating invite token");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+        }
+    }
+
+    /// <summary>
+    /// Registers a new user with an invite token
+    /// </summary>
+    /// <param name="request">The registration request</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>JWT tokens for the newly registered user</returns>
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(RegisterResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> Register(
+        [FromBody] RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // 1. Validate invite
+            var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
+            if (validationResult == null)
+            {
+                _logger.LogWarning("Registration attempted with invalid invite token");
+                return BadRequest(new { message = "Invalid or expired invite token." });
+            }
+
+            // Normalize email for consistency
+            var normalizedEmail = request.Email.ToLowerInvariant();
+            
+            // Trim and validate display name
+            var trimmedDisplayName = request.DisplayName.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedDisplayName))
+            {
+                return BadRequest(new { message = "Display name cannot be empty." });
+            }
+
+            // Check if user already exists (using normalized email)
+            var existingUsers = await _userRepository.FindAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (existingUsers.Any())
+            {
+                _logger.LogWarning("Registration attempted with existing email: {Email}", normalizedEmail);
+                return BadRequest(new { message = "User with this email already exists." });
+            }
+
+            // 2. Create user with placeholder values for passwordless auth
+            var user = new User
+            {
+                Email = normalizedEmail,
+                DisplayName = trimmedDisplayName,
+                PasswordHash = "N/A", // Passwordless auth using magic links
+                PublicKey = "TBD", // Will be set by client during first login
+                InvitedBy = validationResult.InviterId,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            var createdUser = await _userRepository.AddAsync(user, cancellationToken);
+            _logger.LogInformation("User created successfully: {Email}", createdUser.Email);
+
+            // 3. Mark invite as used (critical: do this immediately after user creation)
+            var inviteRedeemed = await _inviteService.RedeemInviteAsync(request.InviteToken, createdUser.Id);
+            if (!inviteRedeemed)
+            {
+                // Invite redemption failed - this is a critical error
+                // The user was created but invite is still valid, creating inconsistent state
+                // We should delete the user to maintain consistency
+                _logger.LogError("Failed to redeem invite after user creation, rolling back user creation");
+                try
+                {
+                    await _userRepository.DeleteAsync(createdUser.Id, cancellationToken);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogError(deleteEx, "Failed to rollback user creation after invite redemption failure");
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred during registration. Please try again.");
+            }
+
+            // 4. Send welcome email (best effort - don't fail if email fails)
+            try
+            {
+                await _emailService.SendWelcomeEmailAsync(
+                    createdUser.Email,
+                    createdUser.DisplayName,
+                    cancellationToken);
+                _logger.LogInformation("Welcome email sent to {Email}", createdUser.Email);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send welcome email to {Email}", createdUser.Email);
+                // Continue anyway - this is not critical
+            }
+
+            // 5. Return JWT
+            var tokenResult = _jwtService.GenerateToken(createdUser, "registration");
+
+            _logger.LogInformation("User registered successfully: {Email}", createdUser.Email);
+
+            return Ok(new RegisterResponse
+            {
+                AccessToken = tokenResult.AccessToken,
+                RefreshToken = tokenResult.RefreshToken,
+                ExpiresAt = tokenResult.ExpiresAt,
+                RefreshExpiresAt = tokenResult.RefreshExpiresAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during user registration");
             return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
         }
     }

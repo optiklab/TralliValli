@@ -129,6 +129,30 @@ public class AzureCommunicationEmailService : IEmailService
         _logger.LogInformation("Password reset email sent successfully to {Email}", recipientEmail);
     }
 
+    /// <inheritdoc/>
+    public async Task SendWelcomeEmailAsync(
+        string recipientEmail,
+        string recipientName,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateEmailParameters(recipientEmail, recipientName);
+
+        _logger.LogInformation("Sending welcome email to {Email}", recipientEmail);
+
+        var template = await LoadTemplateAsync("WelcomeEmail.html");
+        var htmlContent = template
+            .Replace("{{RecipientName}}", HtmlEncode(recipientName));
+
+        await SendEmailAsync(
+            recipientEmail,
+            recipientName,
+            "Welcome to TraliVali",
+            htmlContent,
+            cancellationToken);
+
+        _logger.LogInformation("Welcome email sent successfully to {Email}", recipientEmail);
+    }
+
     private async Task SendEmailAsync(
         string recipientEmail,
         string recipientName,

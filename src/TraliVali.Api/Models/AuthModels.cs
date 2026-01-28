@@ -130,3 +130,76 @@ public class LogoutResponse
     /// </summary>
     public string Message { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Request model for user registration
+/// </summary>
+public class RegisterRequest
+{
+    /// <summary>
+    /// Gets or sets the invite token
+    /// </summary>
+    [Required]
+    public string InviteToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the email address
+    /// </summary>
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the display name
+    /// </summary>
+    [Required]
+    [StringLength(100, MinimumLength = 1)]
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response model for user registration
+/// </summary>
+public class RegisterResponse
+{
+    /// <summary>
+    /// Gets or sets the access token (JWT)
+    /// </summary>
+    public string AccessToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the refresh token
+    /// </summary>
+    public string RefreshToken { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets when the access token expires
+    /// </summary>
+    public DateTime ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the refresh token expires
+    /// </summary>
+    public DateTime RefreshExpiresAt { get; set; }
+}
+
+/// <summary>
+/// Response model for invite validation
+/// </summary>
+public class ValidateInviteResponse
+{
+    /// <summary>
+    /// Gets or sets whether the invite is valid
+    /// </summary>
+    public bool IsValid { get; set; }
+
+    /// <summary>
+    /// Gets or sets when the invite expires
+    /// </summary>
+    public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets a message describing the validation result
+    /// </summary>
+    public string? Message { get; set; }
+}

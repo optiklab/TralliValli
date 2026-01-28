@@ -27,8 +27,10 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     private IConnectionMultiplexer? _redis;
     private AuthController? _controller;
     private IRepository<User>? _userRepository;
+    private IRepository<Invite>? _inviteRepository;
     private IJwtService? _jwtService;
     private IMagicLinkService? _magicLinkService;
+    private IInviteService? _inviteService;
     private ITokenBlacklistService? _tokenBlacklistService;
     private Mock<IEmailService>? _mockEmailService;
     private JwtSettings? _jwtSettings;
@@ -47,6 +49,7 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         var mongoConnectionString = _mongoContainer.GetConnectionString();
         _dbContext = new MongoDbContext(mongoConnectionString, "tralivali_test");
         _userRepository = new UserRepository(_dbContext);
+        _inviteRepository = new InviteRepository(_dbContext);
 
         // Setup Redis
         var redisConnectionString = _redisContainer.GetConnectionString();
@@ -67,7 +70,24 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         _tokenBlacklistService = new TokenBlacklistService(_redis);
         _jwtService = new JwtService(_jwtSettings, _tokenBlacklistService);
         _magicLinkService = new MagicLinkService(_redis);
+        _inviteService = new InviteService(_dbContext.Invites, "test-signing-key-32-characters-long");
         _mockEmailService = new Mock<IEmailService>();
+        
+        // Setup mock email service to return completed tasks
+        _mockEmailService
+            .Setup(x => x.SendMagicLinkEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        
+        _mockEmailService
+            .Setup(x => x.SendWelcomeEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
         // Setup controller
         var logger = new Mock<ILogger<AuthController>>();
@@ -76,6 +96,8 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
             _jwtService,
             _tokenBlacklistService,
             _userRepository,
+            _inviteRepository,
+            _inviteService,
             _mockEmailService.Object,
             logger.Object
         );
@@ -460,5 +482,260 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<LogoutResponse>(okResult.Value);
         Assert.Equal("Logged out successfully.", response.Message);
+    }
+
+    [Fact]
+    public async Task ValidateInvite_ShouldReturnValid_WhenInviteIsValid()
+    {
+        // Arrange
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+
+        // Act
+        var result = await _controller!.ValidateInvite(token);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ValidateInviteResponse>(okResult.Value);
+        Assert.True(response.IsValid);
+        Assert.NotNull(response.ExpiresAt);
+        Assert.Equal("Invite is valid.", response.Message);
+    }
+
+    [Fact]
+    public async Task ValidateInvite_ShouldReturnInvalid_WhenTokenIsInvalid()
+    {
+        // Arrange
+        var invalidToken = "invalid-token";
+
+        // Act
+        var result = await _controller!.ValidateInvite(invalidToken);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        var response = Assert.IsType<ValidateInviteResponse>(notFoundResult.Value);
+        Assert.False(response.IsValid);
+        Assert.Equal("Invalid or expired invite token.", response.Message);
+    }
+
+    [Fact]
+    public async Task ValidateInvite_ShouldReturnInvalid_WhenInviteIsUsed()
+    {
+        // Arrange - Create and use an invite
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+        
+        // Mark invite as used
+        var newUser = new User
+        {
+            Email = "newuser@example.com",
+            DisplayName = "New User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        newUser = await _userRepository!.AddAsync(newUser);
+        await _inviteService.RedeemInviteAsync(token, newUser.Id);
+
+        // Act
+        var result = await _controller!.ValidateInvite(token);
+
+        // Assert
+        var notFoundResult = Assert.IsType<NotFoundObjectResult>(result);
+        var response = Assert.IsType<ValidateInviteResponse>(notFoundResult.Value);
+        Assert.False(response.IsValid);
+    }
+
+    [Fact]
+    public async Task Register_ShouldCreateUser_WhenInviteIsValid()
+    {
+        // Arrange
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+        var request = new RegisterRequest
+        {
+            InviteToken = token,
+            Email = "newuser@example.com",
+            DisplayName = "New User"
+        };
+
+        // Act
+        var result = await _controller!.Register(request, CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<RegisterResponse>(okResult.Value);
+        Assert.NotEmpty(response.AccessToken);
+        Assert.NotEmpty(response.RefreshToken);
+        Assert.True(response.ExpiresAt > DateTime.UtcNow);
+        Assert.True(response.RefreshExpiresAt > DateTime.UtcNow);
+
+        // Verify user was created
+        var users = await _userRepository!.FindAsync(u => u.Email == "newuser@example.com");
+        var createdUser = users.FirstOrDefault();
+        Assert.NotNull(createdUser);
+        Assert.Equal("New User", createdUser.DisplayName);
+        Assert.Equal(inviter.Id, createdUser.InvitedBy);
+        Assert.True(createdUser.IsActive);
+
+        // Verify invite was marked as used
+        var invite = await _inviteService.ValidateInviteAsync(token);
+        Assert.Null(invite); // Should be null because it's used
+
+        // Verify welcome email was sent
+        _mockEmailService!.Verify(
+            x => x.SendWelcomeEmailAsync(
+                It.Is<string>(e => e == "newuser@example.com"),
+                It.Is<string>(n => n == "New User"),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Register_ShouldReturnBadRequest_WhenInviteIsInvalid()
+    {
+        // Arrange
+        var request = new RegisterRequest
+        {
+            InviteToken = "invalid-token",
+            Email = "newuser@example.com",
+            DisplayName = "New User"
+        };
+
+        // Act
+        var result = await _controller!.Register(request, CancellationToken.None);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+        
+        // Verify user was not created
+        var users = await _userRepository!.FindAsync(u => u.Email == "newuser@example.com");
+        Assert.Empty(users);
+
+        // Verify welcome email was not sent
+        _mockEmailService!.Verify(
+            x => x.SendWelcomeEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Register_ShouldReturnBadRequest_WhenUserAlreadyExists()
+    {
+        // Arrange
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+
+        var existingUser = new User
+        {
+            Email = "existing@example.com",
+            DisplayName = "Existing User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        await _userRepository!.AddAsync(existingUser);
+
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+        var request = new RegisterRequest
+        {
+            InviteToken = token,
+            Email = "existing@example.com",
+            DisplayName = "New User"
+        };
+
+        // Act
+        var result = await _controller!.Register(request, CancellationToken.None);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+
+        // Verify invite is still valid (not redeemed)
+        var invite = await _inviteService.ValidateInviteAsync(token);
+        Assert.NotNull(invite);
+
+        // Verify welcome email was not sent
+        _mockEmailService!.Verify(
+            x => x.SendWelcomeEmailAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Register_ShouldNotReuseInvite_WhenInviteIsAlreadyUsed()
+    {
+        // Arrange
+        var inviter = new User
+        {
+            Email = "inviter@example.com",
+            DisplayName = "Inviter User",
+            PasswordHash = "hash123",
+            PublicKey = "key123",
+            IsActive = true
+        };
+        inviter = await _userRepository!.AddAsync(inviter);
+        var token = await _inviteService!.GenerateInviteLinkAsync(inviter.Id, 24);
+        
+        // First registration
+        var firstRequest = new RegisterRequest
+        {
+            InviteToken = token,
+            Email = "firstuser@example.com",
+            DisplayName = "First User"
+        };
+        await _controller!.Register(firstRequest, CancellationToken.None);
+
+        // Second registration attempt with same token
+        var secondRequest = new RegisterRequest
+        {
+            InviteToken = token,
+            Email = "seconduser@example.com",
+            DisplayName = "Second User"
+        };
+
+        // Act
+        var result = await _controller!.Register(secondRequest, CancellationToken.None);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+
+        // Verify second user was not created
+        var users = await _userRepository!.FindAsync(u => u.Email == "seconduser@example.com");
+        Assert.Empty(users);
     }
 }
