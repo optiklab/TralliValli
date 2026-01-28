@@ -83,6 +83,8 @@ try
     .AddJwtBearer(options =>
     {
         // Create RSA key for validation
+        // Note: RSA instance is not explicitly disposed as it needs to live for the application lifetime
+        // It will be cleaned up when the application shuts down
         var rsa = RSA.Create();
         rsa.ImportFromPem(jwtPublicKey);
         var validationKey = new RsaSecurityKey(rsa);
