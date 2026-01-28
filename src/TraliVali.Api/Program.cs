@@ -1,9 +1,8 @@
 using Serilog;
 
-// Configure Serilog
+// Configure Serilog bootstrap logger for startup errors
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/tralivali-.log", rollingInterval: RollingInterval.Day)
     .CreateBootstrapLogger();
 
 try
@@ -12,13 +11,11 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure Serilog with appsettings.json
+    // Configure Serilog from appsettings.json
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
-        .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .WriteTo.File("logs/tralivali-.log", rollingInterval: RollingInterval.Day));
+        .Enrich.FromLogContext());
 
     // Add services to the container.
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
