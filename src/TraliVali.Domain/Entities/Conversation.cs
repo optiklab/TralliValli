@@ -74,10 +74,10 @@ public class Conversation
         if (string.IsNullOrWhiteSpace(Type))
             errors.Add("Type is required");
 
-        if (Participants == null || Participants.Count == 0)
+        if (Participants.Count == 0)
             errors.Add("At least one participant is required");
 
-        if (RecentMessages != null && RecentMessages.Count > 50)
+        if (RecentMessages.Count > 50)
             errors.Add("RecentMessages cannot exceed 50 items");
 
         return errors;

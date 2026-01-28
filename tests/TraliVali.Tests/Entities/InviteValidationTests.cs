@@ -14,6 +14,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
@@ -34,6 +35,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = "",
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
@@ -47,12 +49,53 @@ public class InviteValidationTests
     }
 
     [Fact]
+    public void Validate_ShouldReturnError_WhenEmailIsEmpty()
+    {
+        // Arrange
+        var invite = new Invite
+        {
+            Token = Guid.NewGuid().ToString(),
+            Email = "",
+            InviterId = "507f1f77bcf86cd799439011",
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+
+        // Act
+        var errors = invite.Validate();
+
+        // Assert
+        Assert.Contains("Email is required", errors);
+    }
+
+    [Fact]
+    public void Validate_ShouldReturnError_WhenEmailIsInvalid()
+    {
+        // Arrange
+        var invite = new Invite
+        {
+            Token = Guid.NewGuid().ToString(),
+            Email = "invalid-email",
+            InviterId = "507f1f77bcf86cd799439011",
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        };
+
+        // Act
+        var errors = invite.Validate();
+
+        // Assert
+        Assert.Contains("Email format is invalid", errors);
+    }
+
+    [Fact]
     public void Validate_ShouldReturnError_WhenInviterIdIsEmpty()
     {
         // Arrange
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7)
@@ -72,6 +115,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(-7)
@@ -91,6 +135,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
@@ -113,6 +158,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
@@ -135,6 +181,7 @@ public class InviteValidationTests
         var invite = new Invite
         {
             Token = Guid.NewGuid().ToString(),
+            Email = "invitee@example.com",
             InviterId = "507f1f77bcf86cd799439011",
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(7),

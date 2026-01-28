@@ -76,18 +76,36 @@ public class Invite
         if (string.IsNullOrWhiteSpace(Token))
             errors.Add("Token is required");
 
+        if (string.IsNullOrWhiteSpace(Email))
+            errors.Add("Email is required");
+        else if (!IsValidEmail(Email))
+            errors.Add("Email format is invalid");
+
         if (string.IsNullOrWhiteSpace(InviterId))
             errors.Add("InviterId is required");
 
         if (ExpiresAt <= CreatedAt)
             errors.Add("ExpiresAt must be after CreatedAt");
 
-        if (IsUsed && UsedBy == null)
+        if (IsUsed && string.IsNullOrWhiteSpace(UsedBy))
             errors.Add("UsedBy is required when invite is used");
 
         if (IsUsed && UsedAt == null)
             errors.Add("UsedAt is required when invite is used");
 
         return errors;
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
