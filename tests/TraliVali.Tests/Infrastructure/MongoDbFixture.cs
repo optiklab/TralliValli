@@ -27,7 +27,7 @@ public class MongoDbFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _mongoContainer = new MongoDbBuilder()
-            .WithImage("mongo:latest")
+            .WithImage("mongo:7")
             .Build();
 
         await _mongoContainer.StartAsync();

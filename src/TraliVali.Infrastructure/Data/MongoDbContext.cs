@@ -15,8 +15,14 @@ public class MongoDbContext
     /// </summary>
     /// <param name="connectionString">The MongoDB connection string</param>
     /// <param name="databaseName">The database name</param>
+    /// <exception cref="ArgumentNullException">Thrown when connectionString or databaseName is null or empty</exception>
     public MongoDbContext(string connectionString, string databaseName)
     {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentNullException(nameof(connectionString));
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentNullException(nameof(databaseName));
+
         var client = new MongoClient(connectionString);
         _database = client.GetDatabase(databaseName);
     }
@@ -56,31 +62,66 @@ public class MongoDbContext
     /// </summary>
     public async Task CreateIndexesAsync()
     {
-        // Users: email (unique)
-        var userEmailIndex = Builders<User>.IndexKeys.Ascending(u => u.Email);
-        await Users.Indexes.CreateOneAsync(
-            new CreateIndexModel<User>(userEmailIndex, new CreateIndexOptions { Unique = true }));
+        try
+        {
+            // Users: email (unique)
+            var userEmailIndex = Builders<User>.IndexKeys.Ascending(u => u.Email);
+            await Users.Indexes.CreateOneAsync(
+                new CreateIndexModel<User>(userEmailIndex, new CreateIndexOptions { Unique = true }));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists with different options or same keys, ignore
+        }
 
-        // Messages: conversationId + createdAt (compound index)
-        var messageIndex = Builders<Message>.IndexKeys
-            .Ascending(m => m.ConversationId)
-            .Descending(m => m.CreatedAt);
-        await Messages.Indexes.CreateOneAsync(new CreateIndexModel<Message>(messageIndex));
+        try
+        {
+            // Messages: conversationId + createdAt (compound index)
+            var messageIndex = Builders<Message>.IndexKeys
+                .Ascending(m => m.ConversationId)
+                .Descending(m => m.CreatedAt);
+            await Messages.Indexes.CreateOneAsync(new CreateIndexModel<Message>(messageIndex));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
 
-        // Conversations: participants.userId + lastMessageAt (compound index)
-        var conversationIndex = Builders<Conversation>.IndexKeys
-            .Ascending("participants.userId")
-            .Descending(c => c.LastMessageAt);
-        await Conversations.Indexes.CreateOneAsync(new CreateIndexModel<Conversation>(conversationIndex));
+        try
+        {
+            // Conversations: participants.userId + lastMessageAt (compound index)
+            var conversationIndex = Builders<Conversation>.IndexKeys
+                .Ascending("participants.userId")
+                .Descending(c => c.LastMessageAt);
+            await Conversations.Indexes.CreateOneAsync(new CreateIndexModel<Conversation>(conversationIndex));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
 
-        // Invites: token (unique with TTL)
-        var inviteTokenIndex = Builders<Invite>.IndexKeys.Ascending(i => i.Token);
-        await Invites.Indexes.CreateOneAsync(
-            new CreateIndexModel<Invite>(inviteTokenIndex, new CreateIndexOptions { Unique = true }));
+        try
+        {
+            // Invites: token (unique with TTL)
+            var inviteTokenIndex = Builders<Invite>.IndexKeys.Ascending(i => i.Token);
+            await Invites.Indexes.CreateOneAsync(
+                new CreateIndexModel<Invite>(inviteTokenIndex, new CreateIndexOptions { Unique = true }));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
 
-        // Invites: TTL index on expiresAt
-        var inviteTtlIndex = Builders<Invite>.IndexKeys.Ascending(i => i.ExpiresAt);
-        await Invites.Indexes.CreateOneAsync(
-            new CreateIndexModel<Invite>(inviteTtlIndex, new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
+        try
+        {
+            // Invites: TTL index on expiresAt
+            var inviteTtlIndex = Builders<Invite>.IndexKeys.Ascending(i => i.ExpiresAt);
+            await Invites.Indexes.CreateOneAsync(
+                new CreateIndexModel<Invite>(inviteTtlIndex, new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
     }
 }

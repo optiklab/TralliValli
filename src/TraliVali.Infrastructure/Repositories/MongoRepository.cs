@@ -24,7 +24,13 @@ public class MongoRepository<T> : IRepository<T> where T : class
     /// <inheritdoc />
     public async Task<T?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<T>.Filter.Eq("_id", ObjectId.Parse(id));
+        if (string.IsNullOrWhiteSpace(id))
+            return null;
+
+        if (!ObjectId.TryParse(id, out var objectId))
+            return null;
+
+        var filter = Builders<T>.Filter.Eq("_id", objectId);
         return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -43,6 +49,9 @@ public class MongoRepository<T> : IRepository<T> where T : class
     /// <inheritdoc />
     public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
     {
+        if (entity == null)
+            throw new ArgumentNullException(nameof(entity));
+
         await _collection.InsertOneAsync(entity, cancellationToken: cancellationToken);
         return entity;
     }
@@ -50,7 +59,15 @@ public class MongoRepository<T> : IRepository<T> where T : class
     /// <inheritdoc />
     public async Task<bool> UpdateAsync(string id, T entity, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<T>.Filter.Eq("_id", ObjectId.Parse(id));
+        if (string.IsNullOrWhiteSpace(id))
+            return false;
+        if (entity == null)
+            throw new ArgumentNullException(nameof(entity));
+
+        if (!ObjectId.TryParse(id, out var objectId))
+            return false;
+
+        var filter = Builders<T>.Filter.Eq("_id", objectId);
         var result = await _collection.ReplaceOneAsync(filter, entity, cancellationToken: cancellationToken);
         return result.IsAcknowledged && result.ModifiedCount > 0;
     }
@@ -58,7 +75,13 @@ public class MongoRepository<T> : IRepository<T> where T : class
     /// <inheritdoc />
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
     {
-        var filter = Builders<T>.Filter.Eq("_id", ObjectId.Parse(id));
+        if (string.IsNullOrWhiteSpace(id))
+            return false;
+
+        if (!ObjectId.TryParse(id, out var objectId))
+            return false;
+
+        var filter = Builders<T>.Filter.Eq("_id", objectId);
         var result = await _collection.DeleteOneAsync(filter, cancellationToken);
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
