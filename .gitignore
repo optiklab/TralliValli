@@ -397,3 +397,11 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 .idea/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+docker-data/
