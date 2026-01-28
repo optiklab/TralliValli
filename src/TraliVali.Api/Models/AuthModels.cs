@@ -153,6 +153,7 @@ public class RegisterRequest
     /// Gets or sets the display name
     /// </summary>
     [Required]
+    [StringLength(100, MinimumLength = 1)]
     public string DisplayName { get; set; } = string.Empty;
 }
 

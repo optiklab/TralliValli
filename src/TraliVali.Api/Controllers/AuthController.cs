@@ -314,7 +314,7 @@ public class AuthController : ControllerBase
 
             if (validationResult == null)
             {
-                _logger.LogWarning("Invite validation failed for token: {Token}", token.Substring(0, Math.Min(10, token.Length)));
+                _logger.LogWarning("Invite validation failed for token");
                 return NotFound(new ValidateInviteResponse
                 {
                     IsValid = false,
@@ -367,19 +367,29 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = "Invalid or expired invite token." });
             }
 
-            // Check if user already exists
-            var existingUsers = await _userRepository.FindAsync(u => u.Email == request.Email, cancellationToken);
+            // Normalize email for consistency
+            var normalizedEmail = request.Email.ToLowerInvariant();
+            
+            // Trim and validate display name
+            var trimmedDisplayName = request.DisplayName.Trim();
+            if (string.IsNullOrWhiteSpace(trimmedDisplayName))
+            {
+                return BadRequest(new { message = "Display name cannot be empty." });
+            }
+
+            // Check if user already exists (using normalized email)
+            var existingUsers = await _userRepository.FindAsync(u => u.Email == normalizedEmail, cancellationToken);
             if (existingUsers.Any())
             {
-                _logger.LogWarning("Registration attempted with existing email: {Email}", request.Email);
+                _logger.LogWarning("Registration attempted with existing email: {Email}", normalizedEmail);
                 return BadRequest(new { message = "User with this email already exists." });
             }
 
-            // 2. Create user
+            // 2. Create user with placeholder values for passwordless auth
             var user = new User
             {
-                Email = request.Email,
-                DisplayName = request.DisplayName,
+                Email = normalizedEmail,
+                DisplayName = trimmedDisplayName,
                 PasswordHash = "N/A", // Passwordless auth using magic links
                 PublicKey = "TBD", // Will be set by client during first login
                 InvitedBy = validationResult.InviterId,
@@ -390,12 +400,23 @@ public class AuthController : ControllerBase
             var createdUser = await _userRepository.AddAsync(user, cancellationToken);
             _logger.LogInformation("User created successfully: {Email}", createdUser.Email);
 
-            // 3. Mark invite as used
+            // 3. Mark invite as used (critical: do this immediately after user creation)
             var inviteRedeemed = await _inviteService.RedeemInviteAsync(request.InviteToken, createdUser.Id);
             if (!inviteRedeemed)
             {
-                _logger.LogError("Failed to redeem invite after user creation");
-                // Don't fail the registration, just log the error
+                // Invite redemption failed - this is a critical error
+                // The user was created but invite is still valid, creating inconsistent state
+                // We should delete the user to maintain consistency
+                _logger.LogError("Failed to redeem invite after user creation, rolling back user creation");
+                try
+                {
+                    await _userRepository.DeleteAsync(createdUser.Id, cancellationToken);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogError(deleteEx, "Failed to rollback user creation after invite redemption failure");
+                }
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred during registration. Please try again.");
             }
 
             // 4. Send welcome email (best effort - don't fail if email fails)
