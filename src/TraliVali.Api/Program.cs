@@ -1,5 +1,9 @@
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using StackExchange.Redis;
+using TraliVali.Api.Hubs;
 using TraliVali.Auth;
 using TraliVali.Domain.Entities;
 using TraliVali.Infrastructure.Data;
@@ -30,6 +34,9 @@ try
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+
+    // Add SignalR
+    builder.Services.AddSignalR();
 
     // Configure MongoDB
     var mongoConnectionString = builder.Configuration.GetValue<string>("MongoDB:ConnectionString") 
@@ -66,6 +73,53 @@ try
         RefreshTokenExpirationDays = builder.Configuration.GetValue<int>("Jwt:RefreshTokenExpirationDays", 30)
     };
     builder.Services.AddSingleton(jwtSettings);
+
+    // Configure JWT Authentication with RSA256 signing
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        // Create RSA key for validation
+        // Note: RSA instance is not explicitly disposed as it needs to live for the application lifetime
+        // It will be cleaned up when the application shuts down
+        var rsa = RSA.Create();
+        rsa.ImportFromPem(jwtPublicKey);
+        var validationKey = new RsaSecurityKey(rsa);
+        
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = validationKey,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Configure SignalR to use JWT from query string
+        // Note: This is necessary for WebSocket connections which can't use headers
+        // Security tradeoff: tokens may appear in logs, but this is standard for SignalR
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+
+                // If the request is for the hub endpoint
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 
     // Configure Azure Communication Email Service
     var emailConnectionString = builder.Configuration.GetValue<string>("AzureCommunicationEmail:ConnectionString") 
@@ -110,13 +164,15 @@ try
     app.UseHttpsRedirection();
 
     // Add authentication and authorization
-    // Note: JWT validation will be automatically handled by these middleware
-    // once AddAuthentication and AddJwtBearer are configured
+    // JWT validation configured above with RSA256 signing and supports SignalR query string tokens
     app.UseAuthentication();
     app.UseAuthorization();
 
     // Map controllers
     app.MapControllers();
+
+    // Map SignalR hub
+    app.MapHub<ChatHub>("/hubs/chat");
 
     var summaries = new[]
     {
