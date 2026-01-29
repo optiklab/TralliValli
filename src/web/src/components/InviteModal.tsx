@@ -23,12 +23,12 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
   // Generate invite link
   const generateInviteLink = () => {
     setIsGenerating(true);
-    
+
     // Generate a random invite token
     const token = crypto.randomUUID();
     const baseUrl = window.location.origin;
     const link = `${baseUrl}/invite/${token}`;
-    
+
     setInviteLink(link);
     onGenerate?.(expiryHours);
     setIsGenerating(false);
@@ -86,12 +86,7 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
             className="text-gray-400 hover:text-gray-600 focus:outline-none"
             aria-label="Close modal"
           >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -167,7 +162,10 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
 
             {/* Expiry Info */}
             <div className="text-sm text-gray-600">
-              This link will expire in <span className="font-medium">{expiryHours} hour{expiryHours !== 1 ? 's' : ''}</span>
+              This link will expire in{' '}
+              <span className="font-medium">
+                {expiryHours} hour{expiryHours !== 1 ? 's' : ''}
+              </span>
             </div>
 
             {/* Generate New Link Button */}

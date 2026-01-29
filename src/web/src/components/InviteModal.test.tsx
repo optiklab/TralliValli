@@ -9,12 +9,9 @@ import { InviteModal } from './InviteModal';
 // Mock QRCode library
 vi.mock('qrcode', () => ({
   default: {
-    toCanvas: vi.fn((canvas, text, options, callback) => {
+    toCanvas: vi.fn((canvas, _text, _options, callback) => {
       // Simulate successful QR code generation
       callback?.(null);
-    }),
-    toDataURL: vi.fn((text, options) => {
-      return Promise.resolve('data:image/png;base64,mockQRCode');
     }),
   },
 }));
@@ -183,7 +180,7 @@ describe('InviteModal', () => {
       const inviteLinkInput = screen.queryByLabelText('Invite Link');
       expect(inviteLinkInput).toBeInTheDocument();
     });
-    
+
     // Check expiry text - should be in gray-600 div, not in the select options
     const expiryText = screen.getByText(/This link will expire in/).parentElement;
     expect(expiryText).toHaveTextContent('6');
@@ -203,7 +200,7 @@ describe('InviteModal', () => {
       const inviteLinkInput = screen.queryByLabelText('Invite Link');
       expect(inviteLinkInput).toBeInTheDocument();
     });
-    
+
     // Check for singular form - should be in gray-600 div
     const expiryText = screen.getByText(/This link will expire in/).parentElement;
     expect(expiryText).toHaveTextContent('1');
@@ -225,7 +222,7 @@ describe('InviteModal', () => {
       const inviteLinkInput = screen.queryByLabelText('Invite Link');
       expect(inviteLinkInput).toBeInTheDocument();
     });
-    
+
     expect(select).toBeDisabled();
   });
 

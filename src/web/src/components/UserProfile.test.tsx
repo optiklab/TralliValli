@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { UserProfile } from './UserProfile';
 import { useAuthStore } from '@stores';
+import { UserProfile } from './UserProfile';
 
 describe('UserProfile', () => {
   beforeEach(() => {

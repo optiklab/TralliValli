@@ -35,9 +35,7 @@ export function SettingsPage({ onThemeChange }: SettingsPageProps) {
                 <label htmlFor="theme-toggle" className="text-sm font-medium text-gray-700">
                   Dark Mode
                 </label>
-                <p className="text-sm text-gray-500">
-                  Switch between light and dark theme
-                </p>
+                <p className="text-sm text-gray-500">Switch between light and dark theme</p>
               </div>
 
               <button
@@ -69,7 +67,10 @@ export function SettingsPage({ onThemeChange }: SettingsPageProps) {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <label htmlFor="email-notifications" className="text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="email-notifications"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Email Notifications
                   </label>
                   <p className="text-sm text-gray-500">
@@ -93,7 +94,10 @@ export function SettingsPage({ onThemeChange }: SettingsPageProps) {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <label htmlFor="sound-notifications" className="text-sm font-medium text-gray-700">
+                  <label
+                    htmlFor="sound-notifications"
+                    className="text-sm font-medium text-gray-700"
+                  >
                     Sound Notifications
                   </label>
                   <p className="text-sm text-gray-500">

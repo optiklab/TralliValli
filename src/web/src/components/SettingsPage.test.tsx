@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SettingsPage } from './SettingsPage';
 import { useThemeStore } from '@stores';
+import { SettingsPage } from './SettingsPage';
 
 describe('SettingsPage', () => {
   beforeEach(() => {
