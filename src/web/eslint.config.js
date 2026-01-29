@@ -31,6 +31,20 @@ export default [
       // Airbnb-style rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
 
+      // Import plugin rules
+      'import/order': [
+        'warn',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          'newlines-between': 'never',
+        },
+      ],
+
+      // JSX a11y rules
+      'jsx-a11y/alt-text': 'error',
+      'jsx-a11y/anchor-has-content': 'error',
+      'jsx-a11y/anchor-is-valid': 'warn',
+
       // Prettier integration
       'prettier/prettier': 'error',
     },
