@@ -37,6 +37,11 @@ export interface MessageComposerProps {
   placeholder?: string;
 }
 
+const TYPING_INDICATOR_TIMEOUT = 3000; // Stop typing after 3 seconds of inactivity
+const MAX_TEXTAREA_HEIGHT = 150; // Maximum height in pixels
+const BYTES_PER_KB = 1024;
+const BYTES_PER_MB = 1024 * 1024;
+
 export function MessageComposer({
   conversationId,
   onSendMessage,
@@ -55,8 +60,9 @@ export function MessageComposer({
   const isTypingRef = useRef(false);
 
   // Reset state when conversation changes
+  // Note: Setting state in useEffect is intentional here - we want to reset
+  // the form state when switching conversations, which is a valid use case
   useEffect(() => {
-    // This is intentional - we want to reset form state when conversation changes
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMessage('');
 
@@ -86,7 +92,7 @@ export function MessageComposer({
         typingTimeoutRef.current = setTimeout(() => {
           onTyping(false);
           isTypingRef.current = false;
-        }, 3000); // Stop typing after 3 seconds of inactivity
+        }, TYPING_INDICATOR_TIMEOUT);
       } else {
         // Send typing stop
         if (isTypingRef.current) {
@@ -124,7 +130,7 @@ export function MessageComposer({
     // Auto-resize textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
     }
   };
 
@@ -222,9 +228,9 @@ export function MessageComposer({
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < BYTES_PER_KB) return `${bytes} B`;
+    if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} KB`;
+    return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
   };
 
   return (
@@ -377,7 +383,7 @@ export function MessageComposer({
             disabled={disabled}
             rows={1}
             className="flex-1 resize-none border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-            style={{ minHeight: '42px', maxHeight: '150px' }}
+            style={{ minHeight: '42px', maxHeight: `${MAX_TEXTAREA_HEIGHT}px` }}
             aria-label="Message input"
           />
 

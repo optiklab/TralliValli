@@ -22,7 +22,7 @@ describe('MessageComposer', () => {
   });
 
   afterEach(() => {
-    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   describe('Rendering', () => {
