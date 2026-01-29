@@ -10,3 +10,10 @@ export {
 } from './signalr';
 
 export { apiClient, default as api } from './api';
+
+export {
+  OfflineStorage,
+  type QueuedOutgoingMessage,
+  type SyncMetadata,
+  type ConflictResolutionOptions,
+} from './offlineStorage';
