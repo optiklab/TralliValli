@@ -57,7 +57,7 @@ export interface ConflictResolutionOptions {
 
 /**
  * OfflineStorage service for managing IndexedDB offline storage
- * 
+ *
  * Features:
  * - Store conversations and messages locally
  * - Sync on reconnection
@@ -157,9 +157,7 @@ export class OfflineStorage {
     const now = new Date().toISOString();
 
     await Promise.all([
-      ...conversations.map((conv) =>
-        tx.store.put({ ...conv, syncedAt: now })
-      ),
+      ...conversations.map((conv) => tx.store.put({ ...conv, syncedAt: now })),
       tx.done,
     ]);
   }
@@ -212,12 +210,7 @@ export class OfflineStorage {
     const tx = db.transaction('messages', 'readwrite');
     const now = new Date().toISOString();
 
-    await Promise.all([
-      ...messages.map((msg) =>
-        tx.store.put({ ...msg, syncedAt: now })
-      ),
-      tx.done,
-    ]);
+    await Promise.all([...messages.map((msg) => tx.store.put({ ...msg, syncedAt: now })), tx.done]);
   }
 
   /**
@@ -252,10 +245,7 @@ export class OfflineStorage {
     const messages = await this.getMessagesByConversation(conversationId);
     const tx = db.transaction('messages', 'readwrite');
 
-    await Promise.all([
-      ...messages.map((msg) => tx.store.delete(msg.id)),
-      tx.done,
-    ]);
+    await Promise.all([...messages.map((msg) => tx.store.delete(msg.id)), tx.done]);
   }
 
   // ============================================================================
@@ -405,11 +395,7 @@ export class OfflineStorage {
         updatedIds.push(serverConv.id);
       } else {
         // Conflict resolution using server timestamps
-        const shouldUpdate = this.shouldUpdateConversation(
-          localConv,
-          serverConv,
-          options
-        );
+        const shouldUpdate = this.shouldUpdateConversation(localConv, serverConv, options);
 
         if (shouldUpdate) {
           await this.storeConversation(serverConv);
@@ -441,11 +427,7 @@ export class OfflineStorage {
         updatedIds.push(serverMsg.id);
       } else {
         // Conflict resolution using server timestamps
-        const shouldUpdate = this.shouldUpdateMessage(
-          localMsg,
-          serverMsg,
-          options
-        );
+        const shouldUpdate = this.shouldUpdateMessage(localMsg, serverMsg, options);
 
         if (shouldUpdate) {
           await this.storeMessage(serverMsg);

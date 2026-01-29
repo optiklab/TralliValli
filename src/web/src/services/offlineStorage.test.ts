@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { OfflineStorage } from './offlineStorage';
 import type { ConversationResponse, MessageResponse } from '@/types/api';
-import type { QueuedOutgoingMessage } from './offlineStorage';
 
 describe('OfflineStorage', () => {
   let storage: OfflineStorage;
