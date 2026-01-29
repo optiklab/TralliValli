@@ -12,6 +12,8 @@ export { MessageComposer } from './MessageComposer';
 export { UserProfile } from './UserProfile';
 export { SettingsPage } from './SettingsPage';
 export { InviteModal } from './InviteModal';
+export { FileUpload } from './FileUpload';
+export { FileAttachment } from './FileAttachment';
 
 export type { LoginPageProps } from './LoginPage';
 export type { MagicLinkSentProps } from './MagicLinkSent';
@@ -24,3 +26,5 @@ export type { MessageComposerProps } from './MessageComposer';
 export type { UserProfileProps } from './UserProfile';
 export type { SettingsPageProps } from './SettingsPage';
 export type { InviteModalProps } from './InviteModal';
+export type { FileUploadProps } from './FileUpload';
+export type { FileAttachmentProps } from './FileAttachment';

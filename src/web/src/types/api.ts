@@ -185,3 +185,39 @@ export class ApiErrorResponse extends Error {
     this.traceId = traceId;
   }
 }
+
+// ============================================================================
+// File Upload Models
+// ============================================================================
+
+export interface PresignedUrlRequest {
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  conversationId: string;
+}
+
+export interface PresignedUrlResponse {
+  uploadUrl: string;
+  fileId: string;
+  blobPath: string;
+  expiresAt: string;
+}
+
+export interface FileMetadata {
+  id: string;
+  conversationId: string;
+  uploaderId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  blobPath: string;
+  thumbnailPath?: string;
+  createdAt: string;
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+}
