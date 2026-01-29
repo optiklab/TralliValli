@@ -237,6 +237,15 @@ describe('useAuthStore', () => {
 
   describe('initialize', () => {
     it('should initialize from stored tokens', () => {
+      // First set a user in the store (simulating persisted state)
+      const user: User = {
+        id: 'user-stored',
+        email: 'stored@example.com',
+        displayName: 'Stored User',
+      };
+
+      useAuthStore.setState({ user });
+
       const storedTokens = {
         accessToken: 'stored-access-token',
         refreshToken: 'stored-refresh-token',
@@ -254,7 +263,27 @@ describe('useAuthStore', () => {
       expect(state.refreshToken).toBe('stored-refresh-token');
       expect(state.expiresAt).toEqual(storedTokens.expiresAt);
       expect(state.refreshExpiresAt).toEqual(storedTokens.refreshExpiresAt);
-      expect(state.isAuthenticated).toBe(true);
+      expect(state.isAuthenticated).toBe(true); // true because user exists
+    });
+
+    it('should not set isAuthenticated if user is missing', () => {
+      // Don't set a user in the store
+      const storedTokens = {
+        accessToken: 'stored-access-token',
+        refreshToken: 'stored-refresh-token',
+        expiresAt: new Date('2026-12-31T23:59:59Z'),
+        refreshExpiresAt: new Date('2027-12-31T23:59:59Z'),
+      };
+
+      vi.mocked(tokenStorage.getTokens).mockReturnValue(storedTokens);
+
+      useAuthStore.getState().initialize();
+
+      const state = useAuthStore.getState();
+
+      expect(state.token).toBe('stored-access-token');
+      expect(state.refreshToken).toBe('stored-refresh-token');
+      expect(state.isAuthenticated).toBe(false); // false because no user
     });
 
     it('should handle no stored tokens', () => {

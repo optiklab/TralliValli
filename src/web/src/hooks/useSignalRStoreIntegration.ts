@@ -3,6 +3,26 @@
  *
  * Connects Zustand stores with SignalR events for real-time synchronization.
  * Handles incoming SignalR events and updates the appropriate stores.
+ *
+ * **IMPORTANT**: This hook should only be used once at the application root level.
+ * Multiple instances will accumulate duplicate event handlers. If you need to enable/disable
+ * the integration, use the `enabled` parameter rather than conditionally rendering this hook.
+ *
+ * @example
+ * ```tsx
+ * function App() {
+ *   const signalRService = useMemo(() => new SignalRService({...}), []);
+ *   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+ *
+ *   // Only enable SignalR integration when user is authenticated
+ *   useSignalRStoreIntegration({
+ *     signalRService,
+ *     enabled: isAuthenticated,
+ *   });
+ *
+ *   return <YourApp />;
+ * }
+ * ```
  */
 
 import { useEffect } from 'react';

@@ -70,6 +70,7 @@ export const useAuthStore = create<AuthStore>()(
             : tokens.refreshExpiresAt;
 
         // Store tokens in localStorage via tokenStorage utility
+        // This is needed for the API client which doesn't use Zustand
         storeTokens({
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
@@ -88,6 +89,7 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
+        // Clear tokens from tokenStorage (used by API client)
         clearTokens();
         set({
           ...initialState,
@@ -102,6 +104,8 @@ export const useAuthStore = create<AuthStore>()(
             ? new Date(tokens.refreshExpiresAt)
             : tokens.refreshExpiresAt;
 
+        // Store tokens in localStorage via tokenStorage utility
+        // This is needed for the API client which doesn't use Zustand
         storeTokens({
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
@@ -128,13 +132,14 @@ export const useAuthStore = create<AuthStore>()(
       initialize: () => {
         const tokens = getTokens();
         if (tokens) {
-          set({
+          set((state) => ({
             token: tokens.accessToken,
             refreshToken: tokens.refreshToken,
             expiresAt: tokens.expiresAt,
             refreshExpiresAt: tokens.refreshExpiresAt,
-            isAuthenticated: true,
-          });
+            // Only set authenticated if we also have a user from persisted state
+            isAuthenticated: state.user !== null,
+          }));
         }
       },
     }),
@@ -148,6 +153,28 @@ export const useAuthStore = create<AuthStore>()(
         refreshExpiresAt: state.refreshExpiresAt,
         isAuthenticated: state.isAuthenticated,
       }),
+      // Custom storage to handle Date serialization
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          const { state } = JSON.parse(str);
+          // Convert date strings back to Date objects
+          return {
+            state: {
+              ...state,
+              expiresAt: state.expiresAt ? new Date(state.expiresAt) : null,
+              refreshExpiresAt: state.refreshExpiresAt ? new Date(state.refreshExpiresAt) : null,
+            },
+          };
+        },
+        setItem: (name, value) => {
+          localStorage.setItem(name, JSON.stringify(value));
+        },
+        removeItem: (name) => {
+          localStorage.removeItem(name);
+        },
+      },
     }
   )
 );
