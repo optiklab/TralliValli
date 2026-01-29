@@ -58,6 +58,16 @@ public class MongoDbContext
     public IMongoCollection<Backup> Backups => _database.GetCollection<Backup>("backups");
 
     /// <summary>
+    /// Gets the archival stats collection
+    /// </summary>
+    public IMongoCollection<ArchivalStats> ArchivalStats => _database.GetCollection<ArchivalStats>("archivalStats");
+
+    /// <summary>
+    /// Gets the MongoDB database instance
+    /// </summary>
+    public IMongoDatabase Database => _database;
+
+    /// <summary>
     /// Creates all required indexes
     /// </summary>
     public async Task CreateIndexesAsync()

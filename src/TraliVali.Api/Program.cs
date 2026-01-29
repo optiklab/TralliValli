@@ -8,6 +8,7 @@ using TraliVali.Auth;
 using TraliVali.Domain.Entities;
 using TraliVali.Infrastructure.Data;
 using TraliVali.Infrastructure.Repositories;
+using TraliVali.Infrastructure.Storage;
 using TraliVali.Messaging;
 
 // Configure Serilog bootstrap logger for startup errors
@@ -164,12 +165,56 @@ try
     builder.Services.AddScoped<IRepository<Invite>, InviteRepository>();
     builder.Services.AddScoped<IMessageRepository, MessageRepository>();
     
+    // Register MongoDB collections for direct access
+    builder.Services.AddScoped(sp =>
+    {
+        var dbContext = sp.GetRequiredService<MongoDbContext>();
+        return dbContext.Messages;
+    });
+    builder.Services.AddScoped(sp =>
+    {
+        var dbContext = sp.GetRequiredService<MongoDbContext>();
+        return dbContext.ArchivalStats;
+    });
+    
     // Register ArchiveService as scoped for thread-safe MongoDB access
     builder.Services.AddScoped<IArchiveService>(sp =>
     {
         var dbContext = sp.GetRequiredService<MongoDbContext>();
         return new ArchiveService(dbContext.Conversations, dbContext.Messages, dbContext.Users);
     });
+
+    // Register BackupService
+    var blobConnectionString = builder.Configuration.GetValue<string>("AzureBlobStorage:ConnectionString")
+        ?? Environment.GetEnvironmentVariable("AZURE_BLOB_STORAGE_CONNECTION_STRING");
+    var blobContainerName = builder.Configuration.GetValue<string>("AzureBlobStorage:BackupContainerName")
+        ?? "tralivali-backups";
+    
+    builder.Services.AddScoped<IBackupService>(sp =>
+    {
+        var dbContext = sp.GetRequiredService<MongoDbContext>();
+        var logger = sp.GetRequiredService<ILogger<BackupService>>();
+        return new BackupService(
+            dbContext.Database,
+            dbContext.Backups,
+            blobConnectionString,
+            blobContainerName,
+            logger);
+    });
+
+    // Register AzureBlobService if configured
+    if (!string.IsNullOrEmpty(blobConnectionString))
+    {
+        builder.Services.AddSingleton<IAzureBlobService>(sp =>
+        {
+            return new AzureBlobService(blobConnectionString, blobContainerName);
+        });
+    }
+    else
+    {
+        // Register a no-op implementation when blob storage is not configured
+        builder.Services.AddSingleton<IAzureBlobService?>(sp => null as IAzureBlobService);
+    }
 
     var app = builder.Build();
 

@@ -71,6 +71,12 @@ public class User
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets the user's role (e.g., "user", "admin")
+    /// </summary>
+    [BsonElement("role")]
+    public string Role { get; set; } = "user";
+
+    /// <summary>
     /// Validates the user entity
     /// </summary>
     /// <returns>A list of validation error messages, empty if valid</returns>
