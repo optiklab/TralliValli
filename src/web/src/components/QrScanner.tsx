@@ -112,13 +112,19 @@ export function QrScanner({ onScan, onError, onClose }: QrScannerProps) {
           {/* Video Container */}
           <div className="relative bg-black">
             {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+              <div
+                className="absolute inset-0 flex items-center justify-center bg-gray-900"
+                role="status"
+                aria-live="polite"
+                aria-label="Initializing camera"
+              >
                 <div className="text-center">
                   <svg
                     className="animate-spin h-12 w-12 text-white mx-auto"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <circle
                       className="opacity-25"
@@ -168,6 +174,7 @@ export function QrScanner({ onScan, onError, onClose }: QrScannerProps) {
               ref={videoRef}
               className="w-full aspect-square object-cover"
               style={{ display: error ? 'none' : 'block' }}
+              aria-label="QR code scanner camera feed"
             />
           </div>
 

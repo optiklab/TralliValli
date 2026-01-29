@@ -72,7 +72,7 @@ export function VerifyMagicLink({ token, onSuccess, onError }: VerifyMagicLinkPr
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full space-y-8 text-center">
-          <div>
+          <div role="status" aria-live="polite" aria-label="Verifying your magic link">
             {/* Loading Spinner */}
             <div className="mx-auto flex items-center justify-center h-12 w-12">
               <svg
@@ -80,6 +80,7 @@ export function VerifyMagicLink({ token, onSuccess, onError }: VerifyMagicLinkPr
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <circle
                   className="opacity-25"

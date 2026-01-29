@@ -8,6 +8,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { api } from '@services/index';
 import { useAuthStore } from '@stores/useAuthStore';
+import { isValidEmail, INVITE_VALIDATION_DEBOUNCE_MS } from '@utils/validation';
 
 export interface RegisterPageProps {
   inviteToken?: string;
@@ -46,16 +47,17 @@ export function RegisterPage({
         if (!response.isValid) {
           setError(response.message || 'Invalid or expired invite link');
         }
-      } catch {
+      } catch (error) {
         setInviteValid(false);
-        setError('Failed to validate invite link');
+        const errorMsg = error instanceof Error ? error.message : 'Failed to validate invite link';
+        setError(errorMsg);
       } finally {
         setIsValidating(false);
       }
     };
 
     // Debounce validation
-    const timeoutId = setTimeout(validateInvite, 500);
+    const timeoutId = setTimeout(validateInvite, INVITE_VALIDATION_DEBOUNCE_MS);
     return () => clearTimeout(timeoutId);
   }, [inviteToken]);
 
@@ -86,8 +88,7 @@ export function RegisterPage({
     }
 
     // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       const errorMsg = 'Please enter a valid email address';
       setError(errorMsg);
       onError?.(errorMsg);

@@ -7,6 +7,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { api } from '@services/index';
+import { isValidEmail } from '@utils/validation';
 
 export interface LoginPageProps {
   onMagicLinkSent?: () => void;
@@ -30,8 +31,7 @@ export function LoginPage({ onMagicLinkSent, onError }: LoginPageProps) {
     }
 
     // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!isValidEmail(email)) {
       const errorMsg = 'Please enter a valid email address';
       setError(errorMsg);
       onError?.(errorMsg);
