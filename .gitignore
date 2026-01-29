@@ -410,3 +410,8 @@ docker-data/
 src/web/dist/
 src/web/node_modules/
 src/web/.vite/
+
+# Playwright E2E test artifacts
+src/web/test-results/
+src/web/playwright-report/
+src/web/playwright/.cache/
