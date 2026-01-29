@@ -1,39 +1,14 @@
 /**
  * API Client Service
- * 
+ *
  * Provides a centralized API client with interceptors for:
  * - JWT token injection
  * - Automatic token refresh
  * - Typed error handling
- * 
+ *
  * All API methods return typed responses and throw ApiErrorResponse on errors.
  */
 
-import type {
-  ApiError,
-  RequestMagicLinkRequest,
-  RequestMagicLinkResponse,
-  VerifyMagicLinkRequest,
-  VerifyMagicLinkResponse,
-  RefreshTokenRequest,
-  RefreshTokenResponse,
-  LogoutRequest,
-  LogoutResponse,
-  RegisterRequest,
-  RegisterResponse,
-  ValidateInviteResponse,
-  CreateDirectConversationRequest,
-  CreateGroupConversationRequest,
-  UpdateGroupMetadataRequest,
-  AddMemberRequest,
-  ConversationResponse,
-  PaginatedConversationsResponse,
-  MessageResponse,
-  PaginatedMessagesResponse,
-  SearchMessagesRequest,
-  SearchMessagesResponse,
-} from '@types/api';
-import { ApiErrorResponse } from '@types/api';
 import {
   getAccessToken,
   getRefreshToken,
@@ -42,6 +17,31 @@ import {
   isAccessTokenExpired,
   isRefreshTokenExpired,
 } from '@utils/tokenStorage';
+import {
+  ApiErrorResponse,
+  type ApiError,
+  type AddMemberRequest,
+  type ConversationResponse,
+  type CreateDirectConversationRequest,
+  type CreateGroupConversationRequest,
+  type LogoutRequest,
+  type LogoutResponse,
+  type MessageResponse,
+  type PaginatedConversationsResponse,
+  type PaginatedMessagesResponse,
+  type RefreshTokenRequest,
+  type RefreshTokenResponse,
+  type RegisterRequest,
+  type RegisterResponse,
+  type RequestMagicLinkRequest,
+  type RequestMagicLinkResponse,
+  type SearchMessagesRequest,
+  type SearchMessagesResponse,
+  type UpdateGroupMetadataRequest,
+  type ValidateInviteResponse,
+  type VerifyMagicLinkRequest,
+  type VerifyMagicLinkResponse,
+} from '@/types/api';
 
 // ============================================================================
 // Configuration
@@ -79,7 +79,7 @@ class ApiClient {
     // Request interceptor: Inject JWT token
     this.addRequestInterceptor(async (request) => {
       const accessToken = getAccessToken();
-      
+
       if (accessToken) {
         // Check if token is expired and refresh if needed
         if (isAccessTokenExpired()) {
@@ -227,10 +227,7 @@ class ApiClient {
   /**
    * Make a request with interceptors
    */
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     // Setup default headers
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
@@ -290,10 +287,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    
+
     // Store tokens
     storeTokens(response);
-    
+
     return response;
   }
 
@@ -305,10 +302,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    
+
     // Store new tokens
     storeTokens(response);
-    
+
     return response;
   }
 
@@ -321,7 +318,7 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify(data),
       });
-      
+
       return response;
     } finally {
       // Always clear local tokens
@@ -337,10 +334,10 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
-    
+
     // Store tokens
     storeTokens(response);
-    
+
     return response;
   }
 

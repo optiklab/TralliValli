@@ -1,9 +1,9 @@
 /**
  * Token Storage Utility
- * 
+ *
  * Provides secure storage for JWT access and refresh tokens.
  * Uses localStorage as httpOnly cookies require server-side implementation.
- * 
+ *
  * Security considerations:
  * - Tokens are stored in localStorage (accessible to JavaScript)
  * - In production, consider httpOnly cookies set by the server for better security
@@ -34,14 +34,14 @@ export function storeTokens(tokens: {
   try {
     localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
-    
-    const expiresAt = typeof tokens.expiresAt === 'string' 
-      ? new Date(tokens.expiresAt) 
-      : tokens.expiresAt;
-    const refreshExpiresAt = typeof tokens.refreshExpiresAt === 'string'
-      ? new Date(tokens.refreshExpiresAt)
-      : tokens.refreshExpiresAt;
-    
+
+    const expiresAt =
+      typeof tokens.expiresAt === 'string' ? new Date(tokens.expiresAt) : tokens.expiresAt;
+    const refreshExpiresAt =
+      typeof tokens.refreshExpiresAt === 'string'
+        ? new Date(tokens.refreshExpiresAt)
+        : tokens.refreshExpiresAt;
+
     localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt.toISOString());
     localStorage.setItem(REFRESH_EXPIRY_KEY, refreshExpiresAt.toISOString());
   } catch (error) {

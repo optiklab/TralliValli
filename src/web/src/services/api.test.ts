@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { apiClient } from './api';
-import { ApiErrorResponse } from '@types/api';
 import * as tokenStorage from '@utils/tokenStorage';
+import { apiClient } from './api';
+import { ApiErrorResponse } from '@/types/api';
 
 // Mock tokenStorage module
 vi.mock('@utils/tokenStorage', () => ({
@@ -548,7 +548,7 @@ describe('API Client Service', () => {
           expect.stringContaining('/conversations/conv-1/messages'),
           expect.any(Object)
         );
-        
+
         // Check that the URL contains the encoded parameters
         const callArgs = mockFetch.mock.calls[0][0] as string;
         expect(callArgs).toContain('limit=50');

@@ -34,12 +34,8 @@ describe('Token Storage Utility', () => {
 
       expect(localStorage.getItem('tralli_valli_access_token')).toBe('access-token-123');
       expect(localStorage.getItem('tralli_valli_refresh_token')).toBe('refresh-token-456');
-      expect(localStorage.getItem('tralli_valli_token_expiry')).toBe(
-        '2024-12-31T23:59:59.000Z'
-      );
-      expect(localStorage.getItem('tralli_valli_refresh_expiry')).toBe(
-        '2025-01-31T23:59:59.000Z'
-      );
+      expect(localStorage.getItem('tralli_valli_token_expiry')).toBe('2024-12-31T23:59:59.000Z');
+      expect(localStorage.getItem('tralli_valli_refresh_expiry')).toBe('2025-01-31T23:59:59.000Z');
     });
 
     it('should store tokens with Date objects', () => {
@@ -84,7 +80,7 @@ describe('Token Storage Utility', () => {
     it('should return null if any token is missing', () => {
       localStorage.setItem('tralli_valli_access_token', 'access-token');
       // Missing other tokens
-      
+
       const retrieved = getTokens();
       expect(retrieved).toBeNull();
     });
@@ -105,7 +101,7 @@ describe('Token Storage Utility', () => {
   describe('getAccessToken', () => {
     it('should retrieve access token', () => {
       localStorage.setItem('tralli_valli_access_token', 'access-token-123');
-      
+
       const token = getAccessToken();
       expect(token).toBe('access-token-123');
     });
@@ -131,7 +127,7 @@ describe('Token Storage Utility', () => {
   describe('getRefreshToken', () => {
     it('should retrieve refresh token', () => {
       localStorage.setItem('tralli_valli_refresh_token', 'refresh-token-456');
-      
+
       const token = getRefreshToken();
       expect(token).toBe('refresh-token-456');
     });

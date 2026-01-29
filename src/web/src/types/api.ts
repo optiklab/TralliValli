@@ -168,13 +168,20 @@ export interface ApiError {
 }
 
 export class ApiErrorResponse extends Error {
+  statusCode: number;
+  errors?: Record<string, string[]>;
+  traceId?: string;
+
   constructor(
-    public statusCode: number,
+    statusCode: number,
     message: string,
-    public errors?: Record<string, string[]>,
-    public traceId?: string
+    errors?: Record<string, string[]>,
+    traceId?: string
   ) {
     super(message);
     this.name = 'ApiErrorResponse';
+    this.statusCode = statusCode;
+    this.errors = errors;
+    this.traceId = traceId;
   }
 }
