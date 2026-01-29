@@ -142,6 +142,7 @@ try
 
     // Register services
     builder.Services.AddSingleton<ITokenBlacklistService, TokenBlacklistService>();
+    builder.Services.AddSingleton<IPresenceService, PresenceService>();
     builder.Services.AddSingleton<IJwtService, JwtService>();
     builder.Services.AddSingleton<IMagicLinkService, MagicLinkService>();
     builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();

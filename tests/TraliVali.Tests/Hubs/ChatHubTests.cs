@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using TraliVali.Api.Hubs;
+using TraliVali.Auth;
 
 namespace TraliVali.Tests.Hubs;
 
@@ -12,6 +13,7 @@ namespace TraliVali.Tests.Hubs;
 public class ChatHubTests
 {
     private readonly Mock<ILogger<ChatHub>> _mockLogger;
+    private readonly Mock<IPresenceService> _mockPresenceService;
     private readonly Mock<IHubCallerClients<IChatClient>> _mockClients;
     private readonly Mock<IGroupManager> _mockGroups;
     private readonly Mock<HubCallerContext> _mockContext;
@@ -21,12 +23,13 @@ public class ChatHubTests
     public ChatHubTests()
     {
         _mockLogger = new Mock<ILogger<ChatHub>>();
+        _mockPresenceService = new Mock<IPresenceService>();
         _mockClients = new Mock<IHubCallerClients<IChatClient>>();
         _mockGroups = new Mock<IGroupManager>();
         _mockContext = new Mock<HubCallerContext>();
         _mockClient = new Mock<IChatClient>();
 
-        _chatHub = new ChatHub(_mockLogger.Object)
+        _chatHub = new ChatHub(_mockLogger.Object, _mockPresenceService.Object)
         {
             Clients = _mockClients.Object,
             Groups = _mockGroups.Object,
@@ -267,11 +270,14 @@ public class ChatHubTests
     {
         // Arrange
         _mockClients.Setup(c => c.All).Returns(_mockClient.Object);
+        _mockPresenceService.Setup(s => s.SetOnlineAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         // Act
         await _chatHub.OnConnectedAsync();
 
         // Assert
+        _mockPresenceService.Verify(s => s.SetOnlineAsync("user123", "connection123"), Times.Once);
         _mockClients.Verify(c => c.All, Times.Once);
         _mockClient.Verify(c => c.PresenceUpdate("user123", true, null), Times.Once);
     }
@@ -280,14 +286,21 @@ public class ChatHubTests
     public async Task OnDisconnectedAsync_ShouldNotifyAllClients_AboutUserOffline()
     {
         // Arrange
+        var lastSeenTime = DateTime.UtcNow;
         _mockClients.Setup(c => c.All).Returns(_mockClient.Object);
+        _mockPresenceService.Setup(s => s.SetOfflineAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        _mockPresenceService.Setup(s => s.GetLastSeenAsync(It.IsAny<string>()))
+            .ReturnsAsync(lastSeenTime);
 
         // Act
         await _chatHub.OnDisconnectedAsync(null);
 
         // Assert
+        _mockPresenceService.Verify(s => s.SetOfflineAsync("user123", "connection123"), Times.Once);
+        _mockPresenceService.Verify(s => s.GetLastSeenAsync("user123"), Times.Once);
         _mockClients.Verify(c => c.All, Times.Once);
-        _mockClient.Verify(c => c.PresenceUpdate("user123", false, It.IsAny<DateTime>()), Times.Once);
+        _mockClient.Verify(c => c.PresenceUpdate("user123", false, lastSeenTime), Times.Once);
     }
 
     [Fact]
@@ -297,6 +310,16 @@ public class ChatHubTests
         ILogger<ChatHub>? logger = null;
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => new ChatHub(logger!));
+        Assert.Throws<ArgumentNullException>(() => new ChatHub(logger!, _mockPresenceService.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowException_WhenPresenceServiceIsNull()
+    {
+        // Arrange
+        IPresenceService? presenceService = null;
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new ChatHub(_mockLogger.Object, presenceService!));
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using TraliVali.Auth;
 
 namespace TraliVali.Api.Hubs;
 
@@ -15,14 +16,17 @@ namespace TraliVali.Api.Hubs;
 public class ChatHub : Hub<IChatClient>
 {
     private readonly ILogger<ChatHub> _logger;
+    private readonly IPresenceService _presenceService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ChatHub"/> class
     /// </summary>
     /// <param name="logger">Logger instance</param>
-    public ChatHub(ILogger<ChatHub> logger)
+    /// <param name="presenceService">Presence tracking service</param>
+    public ChatHub(ILogger<ChatHub> logger, IPresenceService presenceService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _presenceService = presenceService ?? throw new ArgumentNullException(nameof(presenceService));
     }
 
     /// <summary>
@@ -162,6 +166,9 @@ public class ChatHub : Hub<IChatClient>
         _logger.LogInformation("User {UserId} connected with connection ID {ConnectionId}", 
             userId, Context.ConnectionId);
 
+        // Mark user as online in presence service
+        await _presenceService.SetOnlineAsync(userId, Context.ConnectionId);
+
         // Notify all clients about this user's online status
         await Clients.All.PresenceUpdate(userId, true, null);
 
@@ -180,8 +187,14 @@ public class ChatHub : Hub<IChatClient>
         _logger.LogInformation("User {UserId} disconnected from connection ID {ConnectionId}", 
             userId, Context.ConnectionId);
 
+        // Mark user as offline in presence service
+        await _presenceService.SetOfflineAsync(userId, Context.ConnectionId);
+
+        // Get last-seen timestamp
+        var lastSeen = await _presenceService.GetLastSeenAsync(userId);
+
         // Notify all clients about this user's offline status
-        await Clients.All.PresenceUpdate(userId, false, DateTime.UtcNow);
+        await Clients.All.PresenceUpdate(userId, false, lastSeen);
 
         await base.OnDisconnectedAsync(exception);
     }
