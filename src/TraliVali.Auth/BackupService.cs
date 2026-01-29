@@ -274,9 +274,10 @@ public class BackupService : IBackupService
                 var document = BsonSerializer.Deserialize<BsonDocument>(context.Reader);
                 documents.Add(document);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // End of stream
+                // End of stream or deserialization error
+                _logger.LogDebug(ex, "Finished reading documents from backup or encountered deserialization issue");
                 break;
             }
         }

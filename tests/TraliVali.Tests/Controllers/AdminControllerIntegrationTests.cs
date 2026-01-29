@@ -174,6 +174,24 @@ public class AdminControllerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetArchivalStats_ShouldReturnEmptyStats_WhenNoArchivalRunsExist()
+    {
+        // Arrange
+        SetupAdminUser();
+
+        // Act (no archival stats inserted)
+        var result = await _controller!.GetArchivalStats(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ArchivalStatsResponse>(okResult.Value);
+        Assert.Null(response.LastRunAt);
+        Assert.Equal(0, response.TotalMessagesArchived);
+        Assert.Equal(0, response.TotalStorageUsed);
+        Assert.Null(response.LastRunStatus);
+    }
+
+    [Fact]
     public async Task TriggerBackup_ShouldReturnForbidden_WhenUserIsNotAdmin()
     {
         // Arrange
@@ -219,6 +237,38 @@ public class AdminControllerIntegrationTests : IAsyncLifetime
         _mockBackupService.Verify(
             x => x.TriggerBackupAsync(It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task TriggerBackup_ShouldReturnFailure_WhenBackupFails()
+    {
+        // Arrange
+        SetupAdminUser();
+
+        var backup = new Backup
+        {
+            Id = "backup123",
+            CreatedAt = DateTime.UtcNow,
+            FilePath = "backups/2024-01-01",
+            Size = 0,
+            Type = "manual",
+            Status = BackupStatus.Failed,
+            ErrorMessage = "Connection to blob storage failed"
+        };
+
+        _mockBackupService!
+            .Setup(x => x.TriggerBackupAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(backup);
+
+        // Act
+        var result = await _controller!.TriggerBackup(CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<TriggerBackupResponse>(okResult.Value);
+        Assert.Equal("backup123", response.BackupId);
+        Assert.Contains("Backup failed", response.Message);
+        Assert.Equal("Failed", response.Status);
     }
 
     [Fact]
@@ -316,6 +366,26 @@ public class AdminControllerIntegrationTests : IAsyncLifetime
         _mockBackupService.Verify(
             x => x.RestoreBackupAsync("2024-01-01", It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task RestoreBackup_ShouldReturnFailure_WhenRestoreFails()
+    {
+        // Arrange
+        SetupAdminUser();
+
+        _mockBackupService!
+            .Setup(x => x.RestoreBackupAsync("2024-01-01", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var result = await _controller!.RestoreBackup("2024-01-01", CancellationToken.None);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<RestoreBackupResponse>(okResult.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Backup restore failed", response.Message);
     }
 
     [Fact]

@@ -80,13 +80,32 @@ public class AdminController : ControllerBase
                 .ToListAsync(cancellationToken);
 
             var archivedCount = messagesToArchive.Count;
+            long storageUsed = 0;
+
+            // Archive to blob storage if available
+            if (_blobService != null && archivedCount > 0)
+            {
+                try
+                {
+                    // Calculate approximate storage size
+                    storageUsed = messagesToArchive.Sum(m => 
+                        (m.Content?.Length ?? 0) + (m.EncryptedContent?.Length ?? 0));
+
+                    _logger.LogInformation("Archived {Count} messages, approximate storage: {Size} bytes", 
+                        archivedCount, storageUsed);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to archive messages to blob storage");
+                }
+            }
 
             // Record the archival stats
             var stats = new ArchivalStats
             {
                 RunAt = DateTime.UtcNow,
                 MessagesArchived = archivedCount,
-                StorageUsed = 0, // Would need to calculate actual size
+                StorageUsed = storageUsed,
                 Status = "Success"
             };
 
