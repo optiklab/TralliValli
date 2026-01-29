@@ -38,11 +38,15 @@ public class AuthControllerIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start MongoDB container
-        _mongoContainer = new MongoDbBuilder().Build();
+        _mongoContainer = new MongoDbBuilder()
+            .WithImage("mongo:6.0")
+            .Build();
         await _mongoContainer.StartAsync();
 
         // Start Redis container
-        _redisContainer = new RedisBuilder().Build();
+        _redisContainer = new RedisBuilder()
+            .WithImage("redis:7-alpine")
+            .Build();
         await _redisContainer.StartAsync();
 
         // Setup MongoDB
