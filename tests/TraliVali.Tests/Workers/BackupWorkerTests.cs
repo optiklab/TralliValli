@@ -280,7 +280,7 @@ public class BackupWorkerTests : IDisposable
     }
 
     [Theory]
-    [InlineData(1, "Backup retention policy: Backups older than 1 days")]
+    [InlineData(1, "Backup retention policy: Backups older than 1 day")]
     [InlineData(7, "Backup retention policy: Backups older than 7 days")]
     [InlineData(30, "Backup retention policy: Backups older than 30 days")]
     [InlineData(90, "Backup retention policy: Backups older than 90 days")]

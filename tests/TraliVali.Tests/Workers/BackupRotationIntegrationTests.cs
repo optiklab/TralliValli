@@ -259,18 +259,21 @@ public class BackupRotationIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task BackupRotation_ShouldKeepBackupsOnExactRetentionBoundary()
     {
-        // Arrange - Create backup at the retention boundary (date only, no time)
-        // When parsed as date-only, it becomes midnight of that day
-        var today = DateTime.UtcNow.Date; // Use date only for consistency
+        // Arrange - Test the boundary behavior of retention cleanup
+        // In production: BackupWorker uses DateTime.UtcNow which includes time component
+        // If a backup runs at 3 AM and retention is 30 days:
+        //   - Cutoff would be "30 days ago at 3 AM"
+        //   - A backup from "30 days ago at midnight" would be deleted (midnight < 3 AM)
+        // 
+        // This test uses .Date to normalize both to midnight for predictable testing.
+        // With both at midnight and using < comparison, backup at exact boundary is kept.
+        var today = DateTime.UtcNow.Date; // Normalized to midnight for test consistency
         var boundaryDate = today.AddDays(-30).ToString("yyyy-MM-dd");
         
         await UploadTestBackupAsync($"backups/{boundaryDate}/tralivali_users.bson.gz");
 
-        // Act - Simulate cleanup with 30-day retention
-        // Note: When the blob date is parsed from "yyyy-MM-dd", it's midnight (00:00:00)
-        // If cutoffDate includes time, midnight will be < cutoffDate, so it gets deleted
-        // This matches the actual implementation behavior
-        var cutoffDate = today.AddDays(-30).Date; // Use date only to match parsing behavior
+        // Act - Simulate cleanup with 30-day retention using normalized dates
+        var cutoffDate = today.AddDays(-30).Date; // Midnight of the cutoff day
         var deletedCount = 0;
         
         await foreach (var blobItem in _containerClient!.GetBlobsAsync(prefix: "backups/"))
@@ -278,7 +281,7 @@ public class BackupRotationIntegrationTests : IAsyncLifetime
             var pathParts = blobItem.Name.Split('/');
             if (pathParts.Length >= 2 && DateTime.TryParse(pathParts[1], out var blobDate))
             {
-                // Using < not <= to match the implementation
+                // Implementation uses < not <= for comparison
                 if (blobDate < cutoffDate)
                 {
                     var blobClient = _containerClient.GetBlobClient(blobItem.Name);
@@ -288,7 +291,7 @@ public class BackupRotationIntegrationTests : IAsyncLifetime
             }
         }
 
-        // Assert - Backup at exact boundary (same date) should NOT be deleted
+        // Assert - With normalized dates, backup at exact boundary (same midnight) is kept
         Assert.Equal(0, deletedCount);
         var remainingBlobs = await ListBlobsAsync();
         Assert.Single(remainingBlobs);
