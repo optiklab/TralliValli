@@ -17,7 +17,7 @@ public class ArchiveServiceTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _mongoContainer = new MongoDbBuilder().Build();
+        _mongoContainer = new MongoDbBuilder("mongo:6.0").Build();
         await _mongoContainer.StartAsync();
 
         var connectionString = _mongoContainer.GetConnectionString();

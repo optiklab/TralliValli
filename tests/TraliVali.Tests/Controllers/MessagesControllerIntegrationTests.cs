@@ -30,7 +30,7 @@ public class MessagesControllerIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start MongoDB container
-        _mongoContainer = new MongoDbBuilder().Build();
+        _mongoContainer = new MongoDbBuilder("mongo:6.0").Build();
         await _mongoContainer.StartAsync();
 
         // Setup MongoDB
@@ -229,8 +229,8 @@ public class MessagesControllerIntegrationTests : IAsyncLifetime
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<PaginatedMessagesResponse>(okResult.Value);
-        Assert.Equal(1, response.Messages.Count);
-        Assert.Equal("Message 1", response.Messages[0].Content);
+        var message = Assert.Single(response.Messages);
+        Assert.Equal("Message 1", message.Content);
     }
 
     [Fact]

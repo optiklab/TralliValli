@@ -28,7 +28,7 @@ public class AdminControllerIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start MongoDB container
-        _mongoContainer = new MongoDbBuilder().Build();
+        _mongoContainer = new MongoDbBuilder("mongo:6.0").Build();
         await _mongoContainer.StartAsync();
 
         // Setup MongoDB
