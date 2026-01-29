@@ -163,6 +163,13 @@ try
     builder.Services.AddScoped<IRepository<Conversation>, ConversationRepository>();
     builder.Services.AddScoped<IRepository<Invite>, InviteRepository>();
     builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+    
+    // Register ArchiveService as scoped for thread-safe MongoDB access
+    builder.Services.AddScoped<IArchiveService>(sp =>
+    {
+        var dbContext = sp.GetRequiredService<MongoDbContext>();
+        return new ArchiveService(dbContext.Conversations, dbContext.Messages, dbContext.Users);
+    });
 
     var app = builder.Build();
 
