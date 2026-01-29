@@ -30,9 +30,7 @@ public class MessagesControllerIntegrationTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start MongoDB container
-        _mongoContainer = new MongoDbBuilder()
-            .WithImage("mongo:6.0")
-            .Build();
+        _mongoContainer = new MongoDbBuilder("mongo:6.0").Build();
         await _mongoContainer.StartAsync();
 
         // Setup MongoDB

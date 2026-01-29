@@ -16,9 +16,7 @@ public class AzureBlobServiceTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Start Azurite container
-        _azuriteContainer = new AzuriteBuilder()
-            .WithImage("mcr.microsoft.com/azure-storage/azurite:latest")
-            .Build();
+        _azuriteContainer = new AzuriteBuilder("mcr.microsoft.com/azure-storage/azurite:latest").Build();
 
         await _azuriteContainer.StartAsync();
 
