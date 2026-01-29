@@ -5,8 +5,8 @@
  * Validates the invite token before allowing registration.
  */
 
-import { useState, FormEvent, useEffect } from 'react';
-import { api } from '@services';
+import { useState, type FormEvent, useEffect } from 'react';
+import { api } from '@services/index';
 import { useAuthStore } from '@stores/useAuthStore';
 
 export interface RegisterPageProps {
@@ -15,7 +15,11 @@ export interface RegisterPageProps {
   onError?: (error: string) => void;
 }
 
-export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onError }: RegisterPageProps) {
+export function RegisterPage({
+  inviteToken: initialInviteToken,
+  onSuccess,
+  onError,
+}: RegisterPageProps) {
   const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -42,7 +46,7 @@ export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onErr
         if (!response.isValid) {
           setError(response.message || 'Invalid or expired invite link');
         }
-      } catch (err) {
+      } catch {
         setInviteValid(false);
         setError('Failed to validate invite link');
       } finally {
@@ -145,7 +149,10 @@ export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onErr
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
-              <label htmlFor="invite-token" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="invite-token"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Invite Link
               </label>
               <input
@@ -159,9 +166,7 @@ export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onErr
                 placeholder="Enter your invite link or token"
                 disabled={isLoading}
               />
-              {isValidating && (
-                <p className="mt-1 text-sm text-gray-500">Validating invite...</p>
-              )}
+              {isValidating && <p className="mt-1 text-sm text-gray-500">Validating invite...</p>}
               {inviteValid === true && (
                 <p className="mt-1 text-sm text-green-600">✓ Valid invite link</p>
               )}
@@ -171,7 +176,10 @@ export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onErr
             </div>
 
             <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="email-address"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Email address
               </label>
               <input
@@ -189,7 +197,10 @@ export function RegisterPage({ inviteToken: initialInviteToken, onSuccess, onErr
             </div>
 
             <div>
-              <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="display-name"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Display Name
               </label>
               <input

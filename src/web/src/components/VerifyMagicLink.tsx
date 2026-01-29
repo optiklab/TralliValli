@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { api } from '@services';
+import { api } from '@services/index';
 import { useAuthStore } from '@stores/useAuthStore';
 
 export interface VerifyMagicLinkProps {
@@ -128,9 +128,7 @@ export function VerifyMagicLink({ token, onSuccess, onError }: VerifyMagicLinkPr
               </svg>
             </div>
 
-            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-              Successfully signed in!
-            </h2>
+            <h2 className="mt-6 text-3xl font-extrabold text-gray-900">Successfully signed in!</h2>
             <p className="mt-2 text-sm text-gray-600">Redirecting you to the app...</p>
           </div>
         </div>

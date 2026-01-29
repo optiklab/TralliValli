@@ -68,9 +68,7 @@ describe('MagicLinkSent', () => {
   it('displays expiration information', () => {
     render(<MagicLinkSent email="test@example.com" />);
 
-    expect(
-      screen.getByText(/The link will expire in 15 minutes/)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/The link will expire in 15 minutes/)).toBeInTheDocument();
   });
 
   it('displays instructions about spam folder', () => {

@@ -59,9 +59,7 @@ export function QrScanner({ onScan, onError, onClose }: QrScannerProps) {
         setIsLoading(false);
       } catch (err) {
         const errorMsg =
-          err instanceof Error
-            ? err.message
-            : 'Failed to access camera. Please check permissions.';
+          err instanceof Error ? err.message : 'Failed to access camera. Please check permissions.';
         setError(errorMsg);
         setIsLoading(false);
         onError?.(errorMsg);
@@ -108,9 +106,7 @@ export function QrScanner({ onScan, onError, onClose }: QrScannerProps) {
           {/* Header */}
           <div className="px-6 py-4 bg-indigo-600">
             <h3 className="text-xl font-semibold text-white">Scan QR Code</h3>
-            <p className="text-sm text-indigo-100 mt-1">
-              Position the QR code within the frame
-            </p>
+            <p className="text-sm text-indigo-100 mt-1">Position the QR code within the frame</p>
           </div>
 
           {/* Video Container */}

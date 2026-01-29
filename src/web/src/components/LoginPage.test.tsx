@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { LoginPage } from './LoginPage';
 import * as services from '@services';
+import { LoginPage } from './LoginPage';
 
 // Mock the API service
 vi.mock('@services', () => ({
@@ -44,7 +44,7 @@ describe('LoginPage', () => {
     render(<LoginPage onError={mockOnError} />);
 
     const form = screen.getByRole('button', { name: /send magic link/i }).closest('form');
-    
+
     // Trigger form submit event directly (bypasses HTML5 validation)
     if (form) {
       fireEvent.submit(form);
@@ -65,7 +65,7 @@ describe('LoginPage', () => {
     const form = screen.getByRole('button', { name: /send magic link/i }).closest('form');
 
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-    
+
     if (form) {
       fireEvent.submit(form);
     }
@@ -121,9 +121,7 @@ describe('LoginPage', () => {
 
   it('shows error message on API failure', async () => {
     const mockOnError = vi.fn();
-    vi.mocked(services.api.requestMagicLink).mockRejectedValue(
-      new Error('Network error')
-    );
+    vi.mocked(services.api.requestMagicLink).mockRejectedValue(new Error('Network error'));
 
     render(<LoginPage onError={mockOnError} />);
 

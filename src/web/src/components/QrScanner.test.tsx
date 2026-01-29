@@ -4,7 +4,19 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import QrScannerLib from 'qr-scanner';
 import { QrScanner } from './QrScanner';
+
+// Define types for our mock QR scanner
+interface MockQrScanner {
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+  destroy: ReturnType<typeof vi.fn>;
+  _mockStart?: ReturnType<typeof vi.fn>;
+  _mockStop?: ReturnType<typeof vi.fn>;
+  _mockDestroy?: ReturnType<typeof vi.fn>;
+  _mockHasCamera?: ReturnType<typeof vi.fn>;
+}
 
 // Mock the qr-scanner library
 vi.mock('qr-scanner', () => {
@@ -13,7 +25,7 @@ vi.mock('qr-scanner', () => {
   const mockDestroy = vi.fn();
   const mockHasCamera = vi.fn().mockResolvedValue(true);
 
-  const MockQrScannerClass = vi.fn(function (this: any) {
+  const MockQrScannerClass = vi.fn(function (this: MockQrScanner) {
     this.start = mockStart;
     this.stop = mockStop;
     this.destroy = mockDestroy;
@@ -23,18 +35,15 @@ vi.mock('qr-scanner', () => {
   MockQrScannerClass.hasCamera = mockHasCamera;
 
   // Export mocks for access in tests
-  (MockQrScannerClass as any)._mockStart = mockStart;
-  (MockQrScannerClass as any)._mockStop = mockStop;
-  (MockQrScannerClass as any)._mockDestroy = mockDestroy;
-  (MockQrScannerClass as any)._mockHasCamera = mockHasCamera;
+  (MockQrScannerClass as MockQrScanner)._mockStart = mockStart;
+  (MockQrScannerClass as MockQrScanner)._mockStop = mockStop;
+  (MockQrScannerClass as MockQrScanner)._mockDestroy = mockDestroy;
+  (MockQrScannerClass as MockQrScanner)._mockHasCamera = mockHasCamera;
 
   return {
     default: MockQrScannerClass,
   };
 });
-
-// Import after mocking
-import QrScannerLib from 'qr-scanner';
 
 describe('QrScanner', () => {
   const mockOnScan = vi.fn();
@@ -42,10 +51,10 @@ describe('QrScanner', () => {
   const mockOnClose = vi.fn();
 
   // Get the mock functions
-  const mockStart = (QrScannerLib as any)._mockStart;
-  const mockStop = (QrScannerLib as any)._mockStop;
-  const mockDestroy = (QrScannerLib as any)._mockDestroy;
-  const mockHasCamera = (QrScannerLib as any)._mockHasCamera;
+  const mockStart = (QrScannerLib as unknown as MockQrScanner)._mockStart!;
+  const mockStop = (QrScannerLib as unknown as MockQrScanner)._mockStop!;
+  const mockDestroy = (QrScannerLib as unknown as MockQrScanner)._mockDestroy!;
+  const mockHasCamera = (QrScannerLib as unknown as MockQrScanner)._mockHasCamera!;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,7 +113,7 @@ describe('QrScanner', () => {
       expect(screen.getByText('Camera Error')).toBeInTheDocument();
       expect(screen.getByText('No camera found on this device')).toBeInTheDocument();
     });
-    
+
     expect(mockOnError).toHaveBeenCalledWith('No camera found on this device');
   });
 
@@ -117,7 +126,7 @@ describe('QrScanner', () => {
     await waitFor(() => {
       expect(screen.getByText('Camera Error')).toBeInTheDocument();
     });
-    
+
     expect(mockOnError).toHaveBeenCalled();
   });
 

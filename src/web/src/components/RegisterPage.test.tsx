@@ -4,9 +4,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { RegisterPage } from './RegisterPage';
 import * as services from '@services';
 import * as authStore from '@stores/useAuthStore';
+import { RegisterPage } from './RegisterPage';
 
 // Mock the API service
 vi.mock('@services', () => ({
@@ -65,9 +65,12 @@ describe('RegisterPage', () => {
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'valid-token' } });
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
   });
 
   it('shows error for invalid invite token', async () => {
@@ -81,10 +84,13 @@ describe('RegisterPage', () => {
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
 
-    await waitFor(() => {
-      expect(screen.getByText('✗ Invalid or expired invite link')).toBeInTheDocument();
-      expect(screen.getByText('Invite has expired')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✗ Invalid or expired invite link')).toBeInTheDocument();
+        expect(screen.getByText('Invite has expired')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
   });
 
   it('disables form fields when invite is invalid', async () => {
@@ -97,11 +103,14 @@ describe('RegisterPage', () => {
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
 
-    await waitFor(() => {
-      expect(screen.getByLabelText('Email address')).toBeDisabled();
-      expect(screen.getByLabelText('Display Name')).toBeDisabled();
-      expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText('Email address')).toBeDisabled();
+        expect(screen.getByLabelText('Display Name')).toBeDisabled();
+        expect(screen.getByRole('button', { name: /create account/i })).toBeDisabled();
+      },
+      { timeout: 1000 }
+    );
   });
 
   it('shows error when submitting without invite token', async () => {
@@ -109,7 +118,7 @@ describe('RegisterPage', () => {
     render(<RegisterPage onError={mockOnError} />);
 
     const form = screen.getByRole('button', { name: /create account/i }).closest('form');
-    
+
     if (form) {
       fireEvent.submit(form);
     }
@@ -127,9 +136,12 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
 
     const emailInput = screen.getByLabelText('Email address');
     const displayNameInput = screen.getByLabelText('Display Name');
@@ -137,7 +149,7 @@ describe('RegisterPage', () => {
 
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
     fireEvent.change(displayNameInput, { target: { value: 'Test User' } });
-    
+
     if (form) {
       fireEvent.submit(form);
     }
@@ -163,9 +175,12 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage inviteToken="valid-token" onSuccess={mockOnSuccess} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
 
     const emailInput = screen.getByLabelText('Email address');
     const displayNameInput = screen.getByLabelText('Display Name');
@@ -204,9 +219,12 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage inviteToken="valid-token" />);
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
 
     const emailInput = screen.getByLabelText('Email address');
     const displayNameInput = screen.getByLabelText('Display Name');
@@ -233,9 +251,12 @@ describe('RegisterPage', () => {
 
     render(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
 
     const emailInput = screen.getByLabelText('Email address');
     const displayNameInput = screen.getByLabelText('Display Name');
@@ -256,19 +277,29 @@ describe('RegisterPage', () => {
   it('shows loading state during registration', async () => {
     vi.mocked(services.api.validateInvite).mockResolvedValue({ isValid: true });
     vi.mocked(services.api.register).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({
-        accessToken: 'token',
-        refreshToken: 'refresh',
-        expiresAt: '2026-12-31T23:59:59Z',
-        refreshExpiresAt: '2027-12-31T23:59:59Z',
-      }), 100))
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                accessToken: 'token',
+                refreshToken: 'refresh',
+                expiresAt: '2026-12-31T23:59:59Z',
+                refreshExpiresAt: '2027-12-31T23:59:59Z',
+              }),
+            100
+          )
+        )
     );
 
     render(<RegisterPage inviteToken="valid-token" />);
 
-    await waitFor(() => {
-      expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText('✓ Valid invite link')).toBeInTheDocument();
+      },
+      { timeout: 1000 }
+    );
 
     const emailInput = screen.getByLabelText('Email address');
     const displayNameInput = screen.getByLabelText('Display Name');
@@ -292,8 +323,11 @@ describe('RegisterPage', () => {
     const inviteInput = screen.getByLabelText('Invite Link') as HTMLInputElement;
     expect(inviteInput.value).toBe('preset-token');
 
-    await waitFor(() => {
-      expect(services.api.validateInvite).toHaveBeenCalledWith('preset-token');
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(services.api.validateInvite).toHaveBeenCalledWith('preset-token');
+      },
+      { timeout: 1000 }
+    );
   });
 });

@@ -4,9 +4,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { VerifyMagicLink } from './VerifyMagicLink';
 import * as services from '@services';
 import * as authStore from '@stores/useAuthStore';
+import { VerifyMagicLink } from './VerifyMagicLink';
 
 // Mock the API service
 vi.mock('@services', () => ({
@@ -86,9 +86,7 @@ describe('VerifyMagicLink', () => {
   it('shows error on verification failure', async () => {
     const mockOnError = vi.fn();
 
-    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(
-      new Error('Invalid token')
-    );
+    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(new Error('Invalid token'));
 
     render(<VerifyMagicLink token="invalid-token" onError={mockOnError} />);
 
@@ -157,9 +155,7 @@ describe('VerifyMagicLink', () => {
   });
 
   it('displays error icon on verification failure', async () => {
-    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(
-      new Error('Token expired')
-    );
+    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(new Error('Token expired'));
 
     const { container } = render(<VerifyMagicLink token="expired-token" />);
 
@@ -173,16 +169,12 @@ describe('VerifyMagicLink', () => {
   });
 
   it('shows helpful message about expired links on error', async () => {
-    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(
-      new Error('Token expired')
-    );
+    vi.mocked(services.api.verifyMagicLink).mockRejectedValue(new Error('Token expired'));
 
     render(<VerifyMagicLink token="expired-token" />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/The magic link may have expired or is invalid/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/The magic link may have expired or is invalid/)).toBeInTheDocument();
     });
   });
 });

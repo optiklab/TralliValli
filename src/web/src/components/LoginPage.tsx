@@ -5,8 +5,8 @@
  * Uses the API service to send the magic link request.
  */
 
-import { useState, FormEvent } from 'react';
-import { api } from '@services';
+import { useState, type FormEvent } from 'react';
+import { api } from '@services/index';
 
 export interface LoginPageProps {
   onMagicLinkSent?: () => void;
