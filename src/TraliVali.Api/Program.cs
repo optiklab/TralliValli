@@ -212,8 +212,8 @@ try
     }
     else
     {
-        // Register null when blob storage is not configured
-        builder.Services.AddSingleton<IAzureBlobService>(sp => null!);
+        // Register null as nullable service when blob storage is not configured
+        builder.Services.AddSingleton<IAzureBlobService?>(sp => null);
     }
 
     var app = builder.Build();

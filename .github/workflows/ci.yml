@@ -97,6 +97,29 @@ jobs:
         VITE_API_URL: http://localhost:5000/api
         VITE_SIGNALR_URL: http://localhost:5000/hub
     
+    - name: Generate JWT test keys
+      id: jwt_keys
+      run: |
+        # Generate RSA keys for JWT testing
+        openssl genrsa -out private.pem 2048
+        openssl rsa -in private.pem -pubout -out public.pem
+        
+        # Read keys and set as output (handle multiline)
+        PRIVATE_KEY=$(cat private.pem)
+        PUBLIC_KEY=$(cat public.pem)
+        
+        # Export as environment variables for next steps
+        echo "JWT_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+        cat private.pem >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        echo "JWT_PUBLIC_KEY<<EOF" >> $GITHUB_ENV
+        cat public.pem >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+        
+        # Cleanup
+        rm private.pem public.pem
+    
     - name: Start API in background
       run: |
         cd src/TraliVali.Api
@@ -110,6 +133,8 @@ jobs:
         RABBITMQ_CONNECTION_STRING: "amqp://admin:password@localhost:5673/"
         REDIS_CONNECTION_STRING: "localhost:6380,password=password"
         ASPNETCORE_URLS: "http://localhost:5000"
+        JWT_PRIVATE_KEY: ${{ env.JWT_PRIVATE_KEY }}
+        JWT_PUBLIC_KEY: ${{ env.JWT_PUBLIC_KEY }}
     
     - name: Run E2E tests
       working-directory: src/web
