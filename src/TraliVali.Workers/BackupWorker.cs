@@ -264,6 +264,12 @@ public class BackupWorker : BackgroundService
         _logger.LogInformation(
             "Backup process completed in {Duration:F2} seconds. Success: {SuccessCount}, Failed: {FailedCount}",
             duration.TotalSeconds, successCount, failedCount);
+
+        // Clean up old backups after successful backup
+        if (successCount > 0)
+        {
+            await CleanupOldBackupsAsync(cancellationToken);
+        }
     }
 
     /// <summary>
