@@ -420,7 +420,7 @@ public class AzureBlobServiceTests : IAsyncLifetime
         Assert.Equal(expectedPath, generatedPath);
         
         // Verify the archive exists at the expected path
-        var downloadedStream = await _blobService.DownloadArchiveAsync(expectedPath);
+        using var downloadedStream = await _blobService.DownloadArchiveAsync(expectedPath);
         Assert.NotNull(downloadedStream);
     }
 

@@ -20,6 +20,9 @@ public interface IAzureBlobService
     /// <param name="path">The blob path of the archive to download</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A stream containing the archive data</returns>
+    /// <remarks>
+    /// The caller is responsible for disposing the returned stream when finished.
+    /// </remarks>
     Task<Stream> DownloadArchiveAsync(string path, CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -78,10 +78,7 @@ public class AzureBlobService : IAzureBlobService
         try
         {
             var response = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken);
-            var memoryStream = new MemoryStream();
-            await response.Value.Content.CopyToAsync(memoryStream, cancellationToken);
-            memoryStream.Position = 0;
-            return memoryStream;
+            return response.Value.Content;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
