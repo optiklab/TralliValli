@@ -21,7 +21,7 @@ import {
   type ClipboardEvent,
   type ChangeEvent,
 } from 'react';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
 
 export interface MessageComposerProps {
   conversationId: string;
@@ -51,7 +51,7 @@ export function MessageComposer({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
 
   // Reset state when conversation changes
