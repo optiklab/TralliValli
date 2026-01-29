@@ -24,3 +24,10 @@ export {
   type UploadOptions,
   type UploadResult,
 } from './fileUpload';
+
+export {
+  CryptoKeyExchange,
+  type KeyPair,
+  type ExportedKeyPair,
+  type StoredKeyPair,
+} from './cryptoKeyExchange';
