@@ -72,12 +72,15 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
               <div
                 key={index}
                 className="flex items-center space-x-2 p-2 bg-gray-100 rounded border border-gray-200"
+                role="group"
+                aria-label={`File attachment: ${attachment}`}
               >
                 <svg
                   className="w-5 h-5 text-gray-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
+                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -86,7 +89,9 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
                     d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                   />
                 </svg>
-                <span className="text-sm text-gray-700 truncate">{attachment}</span>
+                <span className="text-sm text-gray-700 truncate" title={attachment}>
+                  {attachment}
+                </span>
               </div>
             ))}
           </div>
@@ -153,6 +158,7 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
             <button
               onClick={() => onReply(message.id)}
               className="text-xs text-gray-500 hover:text-indigo-600 mt-1 self-start"
+              aria-label={`Reply to message from ${senderName}`}
             >
               Reply
             </button>
@@ -174,8 +180,8 @@ function TypingIndicator({ users }: { users: Array<{ userId: string; userName: s
       : `${users[0].userName} and ${users.length - 1} others are typing...`;
 
   return (
-    <div className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500">
-      <div className="flex space-x-1">
+    <div className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500" role="status" aria-live="polite">
+      <div className="flex space-x-1" aria-hidden="true">
         <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
         <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
         <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -240,8 +246,10 @@ export function MessageThread({
           const newScrollHeight = scrollContainerRef.current.scrollHeight;
           scrollContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight;
         }
-      }).catch(() => {
+      }).catch((error) => {
         setIsLoadingMore(false);
+        console.error('Failed to load more messages:', error);
+        // TODO: Show error notification to user
       });
     }
   }, [hasMore, isLoadingMore, onLoadMore]);
@@ -263,8 +271,8 @@ export function MessageThread({
 
   const handleReply = (messageId: string) => {
     // This would typically trigger a reply UI
-    // For now, just a placeholder
-    console.log('Reply to message:', messageId);
+    // TODO: Implement reply UI functionality
+    // For now, this is a placeholder that will be implemented when message input component is added
   };
 
   if (!currentUser) {
@@ -285,7 +293,7 @@ export function MessageThread({
       >
         {/* Load more indicator */}
         {isLoadingMore && (
-          <div className="flex justify-center py-4">
+          <div className="flex justify-center py-4" aria-label="Loading more messages">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600" />
           </div>
         )}
@@ -305,6 +313,7 @@ export function MessageThread({
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-label="No messages"
               >
                 <path
                   strokeLinecap="round"
