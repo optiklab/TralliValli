@@ -53,7 +53,8 @@ public class RabbitMqService : IMessagePublisher, IMessageConsumer, IDisposable
         "messages.process",
         "files.process",
         "archival.process",
-        "backup.process"
+        "backup.process",
+        "messages.process.deadletter"
     };
 
     private readonly RabbitMqConfiguration _configuration;
