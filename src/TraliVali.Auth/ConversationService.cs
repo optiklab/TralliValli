@@ -123,15 +123,7 @@ public class ConversationService : IConversationService
         if (string.IsNullOrWhiteSpace(role))
             throw new ArgumentException("Role is required", nameof(role));
 
-        // Check if user is already a participant
-        var conversation = await _conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
-        if (conversation == null)
-            return false;
-
-        if (conversation.Participants.Any(p => p.UserId == userId))
-            return false; // User is already a participant
-
-        // Add the new participant
+        // Add the new participant using atomic operation
         var newParticipant = new Participant
         {
             UserId = userId,
@@ -139,7 +131,13 @@ public class ConversationService : IConversationService
             Role = role
         };
 
-        var filter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
+        // Use filter to ensure conversation exists and user is not already a participant
+        var filter = Builders<Conversation>.Filter.And(
+            Builders<Conversation>.Filter.Eq(c => c.Id, conversationId),
+            Builders<Conversation>.Filter.Not(
+                Builders<Conversation>.Filter.ElemMatch(c => c.Participants, p => p.UserId == userId)
+            )
+        );
         var update = Builders<Conversation>.Update.Push(c => c.Participants, newParticipant);
         var result = await _conversations.UpdateOneAsync(filter, update);
 
@@ -154,19 +152,9 @@ public class ConversationService : IConversationService
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("User ID is required", nameof(userId));
 
-        // Get the conversation first
-        var conversation = await _conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
-        if (conversation == null)
-            return false;
-
-        // Find the participant to remove
-        var participantToRemove = conversation.Participants.FirstOrDefault(p => p.UserId == userId);
-        if (participantToRemove == null)
-            return false; // User is not a participant
-
-        // Remove the participant
+        // Remove the participant using PullFilter to match by UserId only
         var filter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
-        var update = Builders<Conversation>.Update.Pull(c => c.Participants, participantToRemove);
+        var update = Builders<Conversation>.Update.PullFilter(c => c.Participants, p => p.UserId == userId);
         var result = await _conversations.UpdateOneAsync(filter, update);
 
         return result.IsAcknowledged && result.ModifiedCount > 0;

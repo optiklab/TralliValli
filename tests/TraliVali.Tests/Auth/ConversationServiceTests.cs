@@ -331,6 +331,18 @@ public class ConversationServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AddMemberAsync_ShouldThrowException_WhenRoleIsEmpty()
+    {
+        // Arrange
+        var conversationId = "507f1f77bcf86cd799439011";
+        var userId = "507f1f77bcf86cd799439012";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _conversationService!.AddMemberAsync(conversationId, userId, ""));
+    }
+
+    [Fact]
     public async Task RemoveMemberAsync_ShouldRemoveMemberFromConversation()
     {
         // Arrange
@@ -497,6 +509,20 @@ public class ConversationServiceTests : IAsyncLifetime
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(
             () => _conversationService!.UpdateGroupMetadataAsync("", "New Name"));
+    }
+
+    [Fact]
+    public async Task UpdateGroupMetadataAsync_ShouldReturnFalse_WhenConversationDoesNotExist()
+    {
+        // Arrange
+        var nonExistentId = "507f1f77bcf86cd799439999";
+        var newName = "Updated Name";
+
+        // Act
+        var result = await _conversationService!.UpdateGroupMetadataAsync(nonExistentId, newName);
+
+        // Assert
+        Assert.False(result);
     }
 
     [Fact]
