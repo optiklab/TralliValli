@@ -19,7 +19,7 @@ interface OfflineDBSchema extends DBSchema {
   outgoingQueue: {
     key: number;
     value: QueuedOutgoingMessage;
-    indexes: { 'by-conversationId': string; 'by-timestamp': number };
+    indexes: { 'by-conversationId': string; 'by-timestamp': number; 'by-status': string };
   };
   syncMetadata: {
     key: string;
@@ -101,6 +101,7 @@ export class OfflineStorage {
           });
           queueStore.createIndex('by-conversationId', 'conversationId');
           queueStore.createIndex('by-timestamp', 'timestamp');
+          queueStore.createIndex('by-status', 'status');
         }
 
         // Sync metadata store
@@ -278,8 +279,7 @@ export class OfflineStorage {
    */
   async getPendingOutgoingMessages(): Promise<QueuedOutgoingMessage[]> {
     const db = this.ensureDB();
-    const allMessages = await db.getAll('outgoingQueue');
-    return allMessages.filter((msg) => msg.status === 'pending');
+    return db.getAllFromIndex('outgoingQueue', 'by-status', 'pending');
   }
 
   /**
@@ -379,6 +379,10 @@ export class OfflineStorage {
   /**
    * Sync conversations from server with conflict resolution
    * Returns list of conversation IDs that were updated
+   *
+   * Note: This method processes conversations sequentially to ensure proper
+   * conflict resolution order. For large datasets, this may take some time.
+   * Consider implementing batch processing for better performance if needed.
    */
   async syncConversations(
     serverConversations: ConversationResponse[],
@@ -411,6 +415,10 @@ export class OfflineStorage {
   /**
    * Sync messages from server with conflict resolution
    * Returns list of message IDs that were updated
+   *
+   * Note: This method processes messages sequentially to ensure proper
+   * conflict resolution order. For large datasets, this may take some time.
+   * Consider implementing batch processing for better performance if needed.
    */
   async syncMessages(
     serverMessages: MessageResponse[],
@@ -459,20 +467,7 @@ export class OfflineStorage {
     const serverTime = server.lastMessageAt ? new Date(server.lastMessageAt).getTime() : 0;
 
     // Server version is newer
-    if (serverTime > localTime) {
-      return true;
-    }
-
-    // If timestamps are equal, don't update
-    if (serverTime === localTime) {
-      return false;
-    }
-
-    // Compare createdAt as fallback
-    const localCreated = new Date(local.createdAt).getTime();
-    const serverCreated = new Date(server.createdAt).getTime();
-
-    return serverCreated > localCreated;
+    return serverTime > localTime;
   }
 
   /**
@@ -505,7 +500,7 @@ export class OfflineStorage {
     const localTime = new Date(local.createdAt).getTime();
     const serverTime = new Date(server.createdAt).getTime();
 
-    return serverTime >= localTime;
+    return serverTime > localTime;
   }
 
   // ============================================================================
