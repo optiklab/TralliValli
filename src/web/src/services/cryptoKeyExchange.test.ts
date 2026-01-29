@@ -103,18 +103,18 @@ describe('CryptoKeyExchange', () => {
       const keyPair = cryptoService.generateKeyPair();
       const invalidPrivateKey = new Uint8Array(16); // Wrong length
 
-      expect(() =>
-        cryptoService.deriveSharedSecret(invalidPrivateKey, keyPair.publicKey)
-      ).toThrow('Invalid private key length');
+      expect(() => cryptoService.deriveSharedSecret(invalidPrivateKey, keyPair.publicKey)).toThrow(
+        'Invalid private key length'
+      );
     });
 
     it('should throw error with invalid public key length', () => {
       const keyPair = cryptoService.generateKeyPair();
       const invalidPublicKey = new Uint8Array(16); // Wrong length
 
-      expect(() =>
-        cryptoService.deriveSharedSecret(keyPair.privateKey, invalidPublicKey)
-      ).toThrow('Invalid public key length');
+      expect(() => cryptoService.deriveSharedSecret(keyPair.privateKey, invalidPublicKey)).toThrow(
+        'Invalid public key length'
+      );
     });
   });
 
@@ -142,9 +142,7 @@ describe('CryptoKeyExchange', () => {
 
       await cryptoService.storeKeyPair(keyId, keyPair, testPassword);
 
-      await expect(
-        cryptoService.getKeyPair(keyId, 'wrong-password')
-      ).rejects.toThrow(); // Just check that it throws an error
+      await expect(cryptoService.getKeyPair(keyId, 'wrong-password')).rejects.toThrow(); // Just check that it throws an error
     });
 
     it('should return null for non-existent key pair', async () => {
@@ -337,9 +335,7 @@ describe('CryptoKeyExchange', () => {
 
       // Get the raw stored data (this requires accessing IndexedDB directly)
       // For now, we verify that retrieval with wrong password fails
-      await expect(
-        cryptoService.getKeyPair(keyId, 'wrong-password')
-      ).rejects.toThrow();
+      await expect(cryptoService.getKeyPair(keyId, 'wrong-password')).rejects.toThrow();
 
       // Verify correct password works
       const retrieved = await cryptoService.getKeyPair(keyId, testPassword);

@@ -111,7 +111,7 @@ export class CryptoKeyExchange {
     this.ensureReady();
 
     const keyPair = _sodium.crypto_box_keypair();
-    
+
     return {
       publicKey: keyPair.publicKey,
       privateKey: keyPair.privateKey,
@@ -141,7 +141,7 @@ export class CryptoKeyExchange {
 
     // Use crypto_scalarmult to perform X25519 key exchange
     const sharedSecret = _sodium.crypto_scalarmult(privateKey, peerPublicKey);
-    
+
     return sharedSecret;
   }
 
@@ -161,24 +161,19 @@ export class CryptoKeyExchange {
 
     // Generate a random salt
     const salt = _sodium.randombytes_buf(saltBytes);
-    
+
     // Derive a key from the password
     // Use crypto_generichash as fallback if crypto_pwhash is not available
     let key: Uint8Array;
     try {
-      const opsLimit = _sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE;
-      const memLimit = _sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE;
+      const opsLimit =
+        _sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE;
+      const memLimit =
+        _sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE;
       const algDefault = _sodium.crypto_pwhash_ALG_DEFAULT ?? CRYPTO_PWHASH_ALG_DEFAULT;
-      
-      key = _sodium.crypto_pwhash(
-        keyBytes,
-        password,
-        salt,
-        opsLimit,
-        memLimit,
-        algDefault
-      );
-    } catch (error) {
+
+      key = _sodium.crypto_pwhash(keyBytes, password, salt, opsLimit, memLimit, algDefault);
+    } catch {
       // Fallback to generic hash for test environments where crypto_pwhash is not available
       // Combine password and salt for key derivation
       const passwordBytes = _sodium.from_string(password);
@@ -220,31 +215,21 @@ export class CryptoKeyExchange {
 
     // Extract salt, nonce, and ciphertext
     const salt = combined.slice(0, saltBytes);
-    const nonce = combined.slice(
-      saltBytes,
-      saltBytes + nonceBytes
-    );
-    const ciphertext = combined.slice(
-      saltBytes + nonceBytes
-    );
+    const nonce = combined.slice(saltBytes, saltBytes + nonceBytes);
+    const ciphertext = combined.slice(saltBytes + nonceBytes);
 
     // Derive the key from the password
     // Use crypto_generichash as fallback if crypto_pwhash is not available
     let key: Uint8Array;
     try {
-      const opsLimit = _sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE;
-      const memLimit = _sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE;
+      const opsLimit =
+        _sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE;
+      const memLimit =
+        _sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE ?? CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE;
       const algDefault = _sodium.crypto_pwhash_ALG_DEFAULT ?? CRYPTO_PWHASH_ALG_DEFAULT;
-      
-      key = _sodium.crypto_pwhash(
-        keyBytes,
-        password,
-        salt,
-        opsLimit,
-        memLimit,
-        algDefault
-      );
-    } catch (error) {
+
+      key = _sodium.crypto_pwhash(keyBytes, password, salt, opsLimit, memLimit, algDefault);
+    } catch {
       // Fallback to generic hash for test environments
       const passwordBytes = _sodium.from_string(password);
       const combinedInput = new Uint8Array(passwordBytes.length + salt.length);

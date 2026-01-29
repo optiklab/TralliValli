@@ -48,14 +48,14 @@ export async function waitForApiResponse(
 // Helper to register a new user via invite link
 export async function registerUser(page: Page, user: TestUser, inviteToken: string) {
   await page.goto(`/register?invite=${inviteToken}`);
-  
+
   // Fill registration form
   await page.fill('input[name="email"]', user.email);
   await page.fill('input[name="displayName"]', user.displayName);
-  
+
   // Submit form
   await page.click('button[type="submit"]');
-  
+
   // Wait for successful registration
   await page.waitForURL('/magic-link-sent', { timeout: 10000 });
 }
@@ -63,16 +63,16 @@ export async function registerUser(page: Page, user: TestUser, inviteToken: stri
 // Helper to login via magic link
 export async function loginViaMagicLink(page: Page, email: string) {
   await page.goto('/login');
-  
+
   // Enter email
   await page.fill('input[name="email"]', email);
-  
+
   // Click send magic link
   await page.click('button[type="submit"]');
-  
+
   // Wait for confirmation
   await page.waitForURL('/magic-link-sent', { timeout: 10000 });
-  
+
   // In a real scenario, we would need to intercept the email or use a test endpoint
   // For E2E tests, we'll need a way to generate valid magic links or mock the auth
   // This is a placeholder that assumes we have a test endpoint or mechanism
@@ -80,22 +80,26 @@ export async function loginViaMagicLink(page: Page, email: string) {
 
 // Helper to wait for SignalR connection
 export async function waitForSignalRConnection(page: Page, timeout: number = 10000) {
-  await page.waitForFunction(
-    () => {
-      // Check if SignalR connection is established
-      // This assumes the app exposes connection state somehow
-      return (window as any).signalRConnected === true;
-    },
-    { timeout }
-  ).catch(() => {
-    // If the above doesn't work, wait for presence of chat UI elements
-    // which indicates the user is connected
-  });
+  await page
+    .waitForFunction(
+      () => {
+        // Check if SignalR connection is established
+        // This assumes the app exposes connection state somehow
+        return (window as any).signalRConnected === true;
+      },
+      { timeout }
+    )
+    .catch(() => {
+      // If the above doesn't work, wait for presence of chat UI elements
+      // which indicates the user is connected
+    });
 }
 
 // Helper to send a text message
 export async function sendMessage(page: Page, message: string) {
-  const messageInput = page.locator('textarea[placeholder*="message" i], input[placeholder*="message" i]');
+  const messageInput = page.locator(
+    'textarea[placeholder*="message" i], input[placeholder*="message" i]'
+  );
   await messageInput.fill(message);
   await messageInput.press('Enter');
 }
@@ -109,14 +113,14 @@ export async function waitForMessage(page: Page, messageContent: string, timeout
 export async function createDirectConversation(page: Page, userName: string) {
   // Click new conversation button
   await page.click('button:has-text("New"), button:has-text("Create")');
-  
+
   // Select direct conversation type
   await page.click('text="Direct Message", text="Direct"');
-  
+
   // Search and select user
   await page.fill('input[placeholder*="search" i]', userName);
   await page.click(`text="${userName}"`);
-  
+
   // Create conversation
   await page.click('button:has-text("Create"), button:has-text("Start")');
 }
@@ -125,19 +129,19 @@ export async function createDirectConversation(page: Page, userName: string) {
 export async function createGroup(page: Page, groupName: string, members: string[]) {
   // Click new conversation button
   await page.click('button:has-text("New"), button:has-text("Create")');
-  
+
   // Select group conversation type
   await page.click('text="Group", text="Create Group"');
-  
+
   // Enter group name
   await page.fill('input[name="groupName"], input[placeholder*="group name" i]', groupName);
-  
+
   // Add members
   for (const member of members) {
     await page.fill('input[placeholder*="search" i], input[placeholder*="member" i]', member);
     await page.click(`text="${member}"`);
   }
-  
+
   // Create group
   await page.click('button:has-text("Create"), button:has-text("Done")');
 }
@@ -152,10 +156,10 @@ export async function uploadFile(page: Page, filePath: string) {
 export async function logout(page: Page) {
   // Click settings or user menu
   await page.click('[aria-label*="settings" i], [aria-label*="menu" i], [aria-label*="profile" i]');
-  
+
   // Click logout button
   await page.click('button:has-text("Logout"), button:has-text("Sign out")');
-  
+
   // Wait for redirect to login
   await page.waitForURL('/login', { timeout: 10000 });
 }
@@ -166,12 +170,12 @@ export const test = base.extend<TestFixtures>({
     const user = generateTestUser();
     await use(user);
   },
-  
+
   authenticatedPage: async ({ page, testUser }, use) => {
     // This fixture provides a page that's already authenticated
     // In a real implementation, this would use a test endpoint or
     // mock authentication mechanism
-    
+
     // For now, we'll just provide the page and assume tests will handle auth
     await use(page);
   },
