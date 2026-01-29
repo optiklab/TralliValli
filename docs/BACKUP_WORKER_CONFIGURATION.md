@@ -221,7 +221,27 @@ To restore a backup:
 
 3. **Restore** to MongoDB using `mongorestore`:
    ```bash
-   mongorestore --archive=users.bson --nsInclude=tralivali.users
+   mongorestore --db=tralivali --collection=users users.bson
+   ```
+   
+   Or to restore all collections from a backup date:
+   ```bash
+   # Download all backups for a date
+   az storage blob download-batch \
+     --account-name <account-name> \
+     --source backups \
+     --destination ./backup-2024-01-16 \
+     --pattern "backups/2024-01-16/*.bson.gz"
+   
+   # Decompress all files
+   gunzip ./backup-2024-01-16/*.bson.gz
+   
+   # Restore each collection
+   mongorestore --db=tralivali --collection=users ./backup-2024-01-16/tralivali_users.bson
+   mongorestore --db=tralivali --collection=conversations ./backup-2024-01-16/tralivali_conversations.bson
+   mongorestore --db=tralivali --collection=messages ./backup-2024-01-16/tralivali_messages.bson
+   mongorestore --db=tralivali --collection=invites ./backup-2024-01-16/tralivali_invites.bson
+   mongorestore --db=tralivali --collection=files ./backup-2024-01-16/tralivali_files.bson
    ```
 
 ## Circuit Breaker
@@ -267,18 +287,20 @@ All 15 tests cover:
 ## Performance Considerations
 
 - **Collection Size**: Large collections may take several minutes to backup
+- **Memory Usage**: The current implementation loads entire collections into memory during backup. For very large collections (>1GB), consider monitoring memory usage
 - **Compression**: Gzip compression is CPU-intensive but saves storage
 - **Network**: Upload speed depends on bandwidth to Azure
-- **Memory**: Backups are held in memory during compression
 - **Concurrent Access**: Worker doesn't impact MongoDB read/write performance
 
 ### Typical Backup Times
 
-| Collection Size | Documents | Backup Time |
-|----------------|-----------|-------------|
-| 100 MB | 10K | ~30 seconds |
-| 1 GB | 100K | ~3 minutes |
-| 10 GB | 1M | ~30 minutes |
+| Collection Size | Documents | Backup Time | Memory Usage |
+|----------------|-----------|-------------|--------------|
+| 100 MB | 10K | ~30 seconds | ~200 MB |
+| 1 GB | 100K | ~3 minutes | ~1.5 GB |
+| 10 GB | 1M | ~30 minutes | ~12 GB |
+
+**Note**: For collections larger than 1GB, monitor server memory usage. Future enhancements may include streaming backups to reduce memory footprint.
 
 ## Security Considerations
 
@@ -336,6 +358,7 @@ Consider:
 
 Potential improvements for the BackupWorker:
 
+- **Streaming Backups**: Implement chunked upload pattern to reduce memory footprint for large collections
 - Incremental backups (only changed documents)
 - Parallel collection exports
 - Backup verification and integrity checks

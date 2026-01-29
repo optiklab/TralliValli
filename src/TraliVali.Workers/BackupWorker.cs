@@ -42,7 +42,9 @@ public class BackupWorker : BackgroundService
 
         // Initialize circuit breaker for Azure Blob operations
         _circuitBreaker = Policy
-            .Handle<Exception>()
+            .Handle<Azure.RequestFailedException>()
+            .Or<HttpRequestException>()
+            .Or<IOException>()
             .CircuitBreakerAsync(
                 exceptionsAllowedBeforeBreaking: _configuration.CircuitBreakerFailureThreshold,
                 durationOfBreak: TimeSpan.FromSeconds(_configuration.CircuitBreakerTimeoutSeconds),
@@ -287,26 +289,19 @@ public class BackupWorker : BackgroundService
         using var bsonStream = new MemoryStream();
         
         // Use BsonBinaryWriter to write documents
-        var writer = new BsonBinaryWriter(bsonStream);
-        try
+        using var writer = new BsonBinaryWriter(bsonStream);
+        using var cursor = await collection.FindAsync(new BsonDocument(), cancellationToken: cancellationToken);
+        await foreach (var document in cursor.ToAsyncEnumerable())
         {
-            var cursor = await collection.FindAsync(new BsonDocument(), cancellationToken: cancellationToken);
-            await foreach (var document in cursor.ToAsyncEnumerable())
+            if (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                // Write each document as BSON
-                var context = BsonSerializationContext.CreateRoot(writer);
-                BsonSerializer.Serialize(context.Writer, document);
-                documentCount++;
+                break;
             }
-        }
-        finally
-        {
-            writer.Dispose();
+
+            // Write each document as BSON
+            var context = BsonSerializationContext.CreateRoot(writer);
+            BsonSerializer.Serialize(context.Writer, document);
+            documentCount++;
         }
 
         var bsonSize = bsonStream.Length;

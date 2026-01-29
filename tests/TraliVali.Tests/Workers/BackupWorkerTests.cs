@@ -147,6 +147,101 @@ public class BackupWorkerTests : IDisposable
         Assert.Equal(retentionDays, config.RetentionDays);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-30)]
+    public void BackupWorkerConfiguration_ShouldThrowOnInvalidRetentionDays(int retentionDays)
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration();
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => config.RetentionDays = retentionDays);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-5)]
+    public void BackupWorkerConfiguration_ShouldThrowOnInvalidCircuitBreakerFailureThreshold(int threshold)
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration();
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => config.CircuitBreakerFailureThreshold = threshold);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-30)]
+    public void BackupWorkerConfiguration_ShouldThrowOnInvalidCircuitBreakerTimeoutSeconds(int timeout)
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration();
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => config.CircuitBreakerTimeoutSeconds = timeout);
+    }
+
+    [Fact]
+    public void BackupWorkerConfiguration_Validate_ShouldThrowWhenBlobStorageConnectionStringIsEmpty()
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration
+        {
+            BlobStorageConnectionString = ""
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void BackupWorkerConfiguration_Validate_ShouldThrowWhenBlobContainerNameIsEmpty()
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration
+        {
+            BlobStorageConnectionString = "valid-connection-string",
+            BlobContainerName = ""
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void BackupWorkerConfiguration_Validate_ShouldThrowWhenCronScheduleIsEmpty()
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration
+        {
+            BlobStorageConnectionString = "valid-connection-string",
+            CronSchedule = ""
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => config.Validate());
+    }
+
+    [Fact]
+    public void BackupWorkerConfiguration_Validate_ShouldPassWithValidConfiguration()
+    {
+        // Arrange
+        var config = new BackupWorkerConfiguration
+        {
+            BlobStorageConnectionString = "valid-connection-string",
+            BlobContainerName = "backups",
+            CronSchedule = "0 3 * * *"
+        };
+
+        // Act & Assert - Should not throw
+        config.Validate();
+    }
+
     [Fact]
     public void BackupWorkerConfiguration_ShouldHaveCorrectDefaultCronScheduleFor3AM()
     {
