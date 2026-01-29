@@ -419,6 +419,83 @@ public class ArchiveServiceTests : IAsyncLifetime
         Assert.Equal("Unknown User", result.Messages[0].SenderName);
     }
 
+    [Fact]
+    public async Task ExportConversationMessagesAsync_ShouldProduceValidJsonStructure()
+    {
+        // Arrange
+        var user1 = await CreateTestUserAsync("alice@test.com", "Alice Smith");
+        var user2 = await CreateTestUserAsync("bob@test.com", "Bob Jones");
+        var conversation = await CreateTestConversationAsync("Project Discussion", new[] { user1.Id, user2.Id });
+
+        var baseTime = DateTime.UtcNow.AddDays(-5);
+        
+        var message1 = new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId = user1.Id,
+            Type = "text",
+            Content = "Hello, how are you?",
+            CreatedAt = baseTime,
+            Attachments = new List<string> { "doc1.pdf" }
+        };
+        await _mongoContext!.Messages.InsertOneAsync(message1);
+
+        var message2 = new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId = user2.Id,
+            Type = "text",
+            Content = "I am doing well, thanks!",
+            CreatedAt = baseTime.AddMinutes(5),
+            EditedAt = baseTime.AddMinutes(10)
+        };
+        await _mongoContext.Messages.InsertOneAsync(message2);
+
+        var startDate = baseTime.AddDays(-1);
+        var endDate = baseTime.AddDays(1);
+
+        // Act
+        var result = await _archiveService!.ExportConversationMessagesAsync(
+            conversation.Id,
+            startDate,
+            endDate);
+
+        // Serialize to JSON to verify structure
+        var json = System.Text.Json.JsonSerializer.Serialize(result, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        // Assert - Verify JSON contains all required fields
+        Assert.Contains("\"exportedAt\":", json);
+        Assert.Contains("\"conversationId\":", json);
+        Assert.Contains("\"conversationName\": \"Project Discussion\"", json);
+        Assert.Contains("\"participants\":", json);
+        Assert.Contains("\"messagesCount\": 2", json);
+        Assert.Contains("\"messages\":", json);
+        
+        // Verify participant structure
+        Assert.Contains("\"userId\":", json);
+        Assert.Contains("\"displayName\": \"Alice Smith\"", json);
+        Assert.Contains("\"email\": \"alice@test.com\"", json);
+        Assert.Contains("\"role\": \"member\"", json);
+        
+        // Verify message structure
+        Assert.Contains("\"messageId\":", json);
+        Assert.Contains("\"senderId\":", json);
+        Assert.Contains("\"senderName\": \"Alice Smith\"", json);
+        Assert.Contains("\"senderName\": \"Bob Jones\"", json);
+        Assert.Contains("\"type\": \"text\"", json);
+        Assert.Contains("\"content\": \"Hello, how are you?\"", json);
+        Assert.Contains("\"content\": \"I am doing well, thanks!\"", json);
+        Assert.Contains("\"createdAt\":", json);
+        Assert.Contains("\"attachments\": [", json);
+        Assert.Contains("\"doc1.pdf\"", json);
+        
+        // Verify editedAt is included for message2
+        Assert.Contains("\"editedAt\":", json);
+    }
+
     // Helper methods
 
     private async Task<User> CreateTestUserAsync(string email, string displayName)
