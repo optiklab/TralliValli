@@ -17,6 +17,7 @@
   "dependencies": {
     "@microsoft/signalr": "^10.0.0",
     "idb": "^8.0.3",
+    "qr-scanner": "^1.4.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "zustand": "^5.0.10"
