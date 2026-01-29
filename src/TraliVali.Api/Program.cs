@@ -146,9 +146,21 @@ try
     builder.Services.AddSingleton<IJwtService, JwtService>();
     builder.Services.AddSingleton<IMagicLinkService, MagicLinkService>();
     builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
+    
+    // Register InviteService
+    var inviteSigningKey = builder.Configuration.GetValue<string>("Invite:SigningKey")
+        ?? Environment.GetEnvironmentVariable("INVITE_SIGNING_KEY")
+        ?? "default-signing-key-32-chars-min";
+    builder.Services.AddSingleton<IInviteService>(sp =>
+    {
+        var dbContext = sp.GetRequiredService<MongoDbContext>();
+        return new InviteService(dbContext.Invites, inviteSigningKey);
+    });
 
     // Register repositories as scoped for better thread safety
     builder.Services.AddScoped<IRepository<User>, UserRepository>();
+    builder.Services.AddScoped<IRepository<Conversation>, ConversationRepository>();
+    builder.Services.AddScoped<IRepository<Invite>, InviteRepository>();
 
     var app = builder.Build();
 
