@@ -1,0 +1,97 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: tralivali-mongodb-e2e
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: tralivali_e2e
+    ports:
+      - "27018:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - e2e-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: tralivali-rabbitmq-e2e
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - e2e-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tralivali-redis-e2e
+    command: sh -c "redis-server --requirepass password --appendonly yes"
+    environment:
+      REDIS_PASSWORD: password
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli -a password ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - e2e-network
+
+  # API Backend (placeholder - would need to be built and added)
+  # api:
+  #   build:
+  #     context: ../..
+  #     dockerfile: src/TraliVali.Api/Dockerfile
+  #   container_name: tralivali-api-e2e
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Development
+  #     - MONGODB_CONNECTION_STRING=mongodb://admin:password@mongodb:27017/tralivali_e2e?authSource=admin
+  #     - RABBITMQ_CONNECTION_STRING=amqp://admin:password@rabbitmq:5672/
+  #     - REDIS_CONNECTION_STRING=redis:6379,password=password
+  #   ports:
+  #     - "5001:5000"
+  #   depends_on:
+  #     mongodb:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - e2e-network
+
+  # Web Frontend (Vite dev server or production build)
+  # web:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.e2e
+  #   container_name: tralivali-web-e2e
+  #   environment:
+  #     - VITE_API_URL=http://api:5000/api
+  #     - VITE_SIGNALR_URL=http://api:5000/hub
+  #   ports:
+  #     - "5174:5173"
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - e2e-network
+
+networks:
+  e2e-network:
+    driver: bridge

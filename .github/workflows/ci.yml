@@ -36,3 +36,86 @@ jobs:
       with:
         name: test-results
         path: ./TestResults
+  
+  e2e-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: src/web/package-lock.json
+    
+    - name: Install frontend dependencies
+      working-directory: src/web
+      run: npm ci
+    
+    - name: Install Playwright browsers
+      working-directory: src/web
+      run: npx playwright install --with-deps chromium
+    
+    - name: Start Docker Compose services
+      run: |
+        docker-compose -f docker-compose.e2e.yml up -d
+        echo "Waiting for services to be healthy..."
+        sleep 30
+    
+    - name: Check Docker services
+      run: docker-compose -f docker-compose.e2e.yml ps
+    
+    - name: Setup .NET for API
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.x'
+    
+    - name: Build and start API backend
+      run: |
+        dotnet build src/TraliVali.Api/TraliVali.Api.csproj --configuration Release
+      env:
+        MONGODB_CONNECTION_STRING: "mongodb://admin:password@localhost:27018/tralivali_e2e?authSource=admin"
+        RABBITMQ_CONNECTION_STRING: "amqp://admin:password@localhost:5673/"
+        REDIS_CONNECTION_STRING: "localhost:6380,password=password"
+    
+    # Note: This assumes the API can be run in the background
+    # Adjust based on actual project structure
+    # - name: Start API in background
+    #   run: |
+    #     cd src/TraliVali.Api
+    #     dotnet run --no-build --configuration Release &
+    #     echo $! > api.pid
+    #     sleep 10
+    
+    - name: Run E2E tests
+      working-directory: src/web
+      run: npm run test:e2e
+      env:
+        CI: true
+        E2E_BASE_URL: http://localhost:5173
+    
+    - name: Upload Playwright report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: src/web/playwright-report
+        retention-days: 30
+    
+    - name: Upload test videos and screenshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-artifacts
+        path: |
+          src/web/test-results
+        retention-days: 30
+    
+    - name: Stop Docker Compose services
+      if: always()
+      run: docker-compose -f docker-compose.e2e.yml down -v
