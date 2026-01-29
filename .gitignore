@@ -405,3 +405,8 @@ FodyWeavers.xsd
 
 # Docker volumes
 docker-data/
+
+# Web project
+src/web/dist/
+src/web/node_modules/
+src/web/.vite/
