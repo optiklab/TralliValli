@@ -85,14 +85,31 @@ jobs:
         RABBITMQ_CONNECTION_STRING: "amqp://admin:password@localhost:5673/"
         REDIS_CONNECTION_STRING: "localhost:6380,password=password"
     
-    # Note: This assumes the API can be run in the background
-    # Adjust based on actual project structure
-    # - name: Start API in background
-    #   run: |
-    #     cd src/TraliVali.Api
-    #     dotnet run --no-build --configuration Release &
-    #     echo $! > api.pid
-    #     sleep 10
+    - name: Start Vite dev server in background
+      working-directory: src/web
+      run: |
+        npm run dev &
+        echo $! > vite.pid
+        echo "Waiting for Vite dev server to start..."
+        timeout 60 bash -c 'until curl -sf http://localhost:5173 > /dev/null; do sleep 2; done' || echo "Vite might not be ready"
+        sleep 5
+      env:
+        VITE_API_URL: http://localhost:5000/api
+        VITE_SIGNALR_URL: http://localhost:5000/hub
+    
+    - name: Start API in background
+      run: |
+        cd src/TraliVali.Api
+        dotnet run --no-build --configuration Release &
+        echo $! > ../../api.pid
+        echo "Waiting for API to start..."
+        sleep 15
+      env:
+        ASPNETCORE_ENVIRONMENT: Development
+        MONGODB_CONNECTION_STRING: "mongodb://admin:password@localhost:27018/tralivali_e2e?authSource=admin"
+        RABBITMQ_CONNECTION_STRING: "amqp://admin:password@localhost:5673/"
+        REDIS_CONNECTION_STRING: "localhost:6380,password=password"
+        ASPNETCORE_URLS: "http://localhost:5000"
     
     - name: Run E2E tests
       working-directory: src/web
@@ -117,6 +134,18 @@ jobs:
         path: |
           src/web/test-results
         retention-days: 30
+    
+    - name: Stop API and Vite servers
+      if: always()
+      run: |
+        if [ -f api.pid ]; then
+          kill $(cat api.pid) || true
+          rm api.pid
+        fi
+        if [ -f src/web/vite.pid ]; then
+          kill $(cat src/web/vite.pid) || true
+          rm src/web/vite.pid
+        fi
     
     - name: Stop Docker Compose services
       if: always()
