@@ -55,19 +55,20 @@ public class ConversationsController : ControllerBase
             page = Math.Max(1, page);
             pageSize = Math.Max(1, Math.Min(100, pageSize));
 
-            // Get conversations where user is a participant
+            // Get all conversations where user is a participant
             var allConversations = await _conversationRepository.FindAsync(
                 c => c.Participants.Any(p => p.UserId == userId),
                 cancellationToken);
 
-            var conversations = allConversations
+            // Sort and paginate in memory (Note: For large datasets, consider MongoDB aggregation pipeline)
+            var sortedConversations = allConversations
                 .OrderByDescending(c => c.LastMessageAt ?? c.CreatedAt)
                 .ToList();
 
-            var totalCount = conversations.Count;
+            var totalCount = sortedConversations.Count;
             var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-            var pagedConversations = conversations
+            var pagedConversations = sortedConversations
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(MapToResponse)
@@ -127,9 +128,10 @@ public class ConversationsController : ControllerBase
                 return NotFound(new { message = "User not found." });
             }
 
-            // Check if conversation already exists
+            // Check if conversation already exists (direct conversations should have exactly 2 participants)
             var existingConversations = await _conversationRepository.FindAsync(
                 c => c.Type == "direct" &&
+                     c.Participants.Count == 2 &&
                      c.Participants.Any(p => p.UserId == userId) &&
                      c.Participants.Any(p => p.UserId == request.OtherUserId),
                 cancellationToken);
@@ -148,8 +150,8 @@ public class ConversationsController : ControllerBase
                 IsGroup = false,
                 Participants = new List<Participant>
                 {
-                    new Participant { UserId = userId, Role = "member" },
-                    new Participant { UserId = request.OtherUserId, Role = "member" }
+                    new Participant { UserId = userId, Role = "member", JoinedAt = DateTime.UtcNow },
+                    new Participant { UserId = request.OtherUserId, Role = "member", JoinedAt = DateTime.UtcNow }
                 },
                 CreatedAt = DateTime.UtcNow
             };
@@ -449,11 +451,18 @@ public class ConversationsController : ControllerBase
                 return NotFound(new { message = "User not found." });
             }
 
+            // Validate and normalize role (only "member" is allowed, admins must be promoted separately)
+            var role = request.Role?.ToLower() ?? "member";
+            if (role != "member")
+            {
+                return BadRequest(new { message = "Invalid role. Only 'member' role is allowed when adding users. Admins must be promoted through a separate endpoint." });
+            }
+
             // Add the new member
             conversation.Participants.Add(new Participant
             {
                 UserId = request.UserId,
-                Role = request.Role ?? "member",
+                Role = role,
                 JoinedAt = DateTime.UtcNow
             });
 

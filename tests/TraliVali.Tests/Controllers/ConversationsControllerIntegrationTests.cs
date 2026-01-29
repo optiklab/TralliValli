@@ -633,6 +633,69 @@ public class ConversationsControllerIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AddMember_ShouldReturnNotFound_WhenUserToAddDoesNotExist()
+    {
+        // Arrange
+        SetupControllerContext(_testUser1!.Id);
+        
+        var conversation = await _conversationRepository!.AddAsync(new Conversation
+        {
+            Type = "group",
+            Name = "Test Group",
+            IsGroup = true,
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = _testUser1.Id, Role = "admin" },
+                new Participant { UserId = _testUser2!.Id, Role = "member" }
+            },
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var request = new AddMemberRequest
+        {
+            UserId = "000000000000000000000000"
+        };
+
+        // Act
+        var result = await _controller!.AddMember(conversation.Id, request, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task AddMember_ShouldReturnBadRequest_WhenTryingToAddAdmin()
+    {
+        // Arrange
+        SetupControllerContext(_testUser1!.Id);
+        
+        var conversation = await _conversationRepository!.AddAsync(new Conversation
+        {
+            Type = "group",
+            Name = "Test Group",
+            IsGroup = true,
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = _testUser1.Id, Role = "admin" },
+                new Participant { UserId = _testUser2!.Id, Role = "member" }
+            },
+            CreatedAt = DateTime.UtcNow
+        });
+
+        var request = new AddMemberRequest
+        {
+            UserId = _testUser3!.Id,
+            Role = "admin"
+        };
+
+        // Act
+        var result = await _controller!.AddMember(conversation.Id, request, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
     public async Task RemoveMember_ShouldRemoveMember_WhenUserIsAdmin()
     {
         // Arrange
