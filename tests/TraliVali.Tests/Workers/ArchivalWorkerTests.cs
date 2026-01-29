@@ -14,12 +14,14 @@ namespace TraliVali.Tests.Workers;
 public class ArchivalWorkerTests : IDisposable
 {
     private readonly Mock<IMongoCollection<Message>> _mockMessageCollection;
+    private readonly Mock<IMongoCollection<Conversation>> _mockConversationCollection;
     private readonly Mock<ILogger<ArchivalWorker>> _mockLogger;
     private readonly ArchivalWorkerConfiguration _configuration;
 
     public ArchivalWorkerTests()
     {
         _mockMessageCollection = new Mock<IMongoCollection<Message>>();
+        _mockConversationCollection = new Mock<IMongoCollection<Conversation>>();
         _mockLogger = new Mock<ILogger<ArchivalWorker>>();
         
         _configuration = new ArchivalWorkerConfiguration
@@ -41,6 +43,18 @@ public class ArchivalWorkerTests : IDisposable
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ArchivalWorker(
             null!,
+            _mockConversationCollection.Object,
+            _configuration,
+            _mockLogger.Object));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentNullException_WhenConversationsCollectionIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new ArchivalWorker(
+            _mockMessageCollection.Object,
+            null!,
             _configuration,
             _mockLogger.Object));
     }
@@ -51,6 +65,7 @@ public class ArchivalWorkerTests : IDisposable
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ArchivalWorker(
             _mockMessageCollection.Object,
+            _mockConversationCollection.Object,
             null!,
             _mockLogger.Object));
     }
@@ -61,6 +76,7 @@ public class ArchivalWorkerTests : IDisposable
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ArchivalWorker(
             _mockMessageCollection.Object,
+            _mockConversationCollection.Object,
             _configuration,
             null!));
     }
@@ -71,6 +87,7 @@ public class ArchivalWorkerTests : IDisposable
         // Act
         var worker = new ArchivalWorker(
             _mockMessageCollection.Object,
+            _mockConversationCollection.Object,
             _configuration,
             _mockLogger.Object);
 

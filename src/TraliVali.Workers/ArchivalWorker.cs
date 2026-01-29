@@ -17,6 +17,7 @@ namespace TraliVali.Workers;
 public class ArchivalWorker : BackgroundService
 {
     private readonly IMongoCollection<Message> _messagesCollection;
+    private readonly IMongoCollection<Conversation> _conversationsCollection;
     private readonly ILogger<ArchivalWorker> _logger;
     private readonly ArchivalWorkerConfiguration _configuration;
     private readonly AsyncCircuitBreakerPolicy _circuitBreaker;
@@ -26,14 +27,17 @@ public class ArchivalWorker : BackgroundService
     /// Initializes a new instance of the <see cref="ArchivalWorker"/> class
     /// </summary>
     /// <param name="messagesCollection">The messages collection</param>
+    /// <param name="conversationsCollection">The conversations collection</param>
     /// <param name="configuration">The worker configuration</param>
     /// <param name="logger">The logger instance</param>
     public ArchivalWorker(
         IMongoCollection<Message> messagesCollection,
+        IMongoCollection<Conversation> conversationsCollection,
         ArchivalWorkerConfiguration configuration,
         ILogger<ArchivalWorker> logger)
     {
         _messagesCollection = messagesCollection ?? throw new ArgumentNullException(nameof(messagesCollection));
+        _conversationsCollection = conversationsCollection ?? throw new ArgumentNullException(nameof(conversationsCollection));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -148,6 +152,7 @@ public class ArchivalWorker : BackgroundService
         var totalArchived = 0;
         var totalDeleted = 0;
         var totalFailed = 0;
+        var affectedConversations = new HashSet<string>();
 
         try
         {
@@ -201,6 +206,7 @@ public class ArchivalWorker : BackgroundService
                             if (deleteResult.DeletedCount > 0)
                             {
                                 totalDeleted++;
+                                affectedConversations.Add(message.ConversationId);
                             }
                         }
 
@@ -217,8 +223,14 @@ public class ArchivalWorker : BackgroundService
                     totalArchived, totalDeleted, totalFailed);
             }
 
-            _logger.LogInformation("Archival process completed. Total archived: {TotalArchived}, Total deleted: {TotalDeleted}, Total failed: {TotalFailed}",
-                totalArchived, totalDeleted, totalFailed);
+            // Update recentMessages array for affected conversations
+            if (_configuration.DeleteAfterArchive && affectedConversations.Count > 0)
+            {
+                await UpdateConversationRecentMessagesAsync(affectedConversations, cancellationToken);
+            }
+
+            _logger.LogInformation("Archival process completed. Total archived: {TotalArchived}, Total deleted: {TotalDeleted}, Total failed: {TotalFailed}, Affected conversations: {AffectedConversations}",
+                totalArchived, totalDeleted, totalFailed, affectedConversations.Count);
         }
         catch (Exception ex)
         {
@@ -257,5 +269,78 @@ public class ArchivalWorker : BackgroundService
 
             _logger.LogDebug("Message {MessageId} archived to blob {BlobName}", message.Id, blobName);
         });
+    }
+
+    /// <summary>
+    /// Updates recentMessages arrays for affected conversations after message deletion
+    /// </summary>
+    /// <param name="conversationIds">Set of conversation IDs that had messages deleted</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    private async Task UpdateConversationRecentMessagesAsync(HashSet<string> conversationIds, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Updating recentMessages array for {Count} affected conversations", conversationIds.Count);
+        var updatedCount = 0;
+
+        foreach (var conversationId in conversationIds)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("Conversation update cancelled");
+                break;
+            }
+
+            try
+            {
+                // Get the conversation
+                var conversationFilter = Builders<Conversation>.Filter.Eq(c => c.Id, conversationId);
+                var conversation = await _conversationsCollection
+                    .Find(conversationFilter)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (conversation == null || conversation.RecentMessages.Count == 0)
+                {
+                    continue;
+                }
+
+                // Check which message IDs in recentMessages still exist in the messages collection
+                var existingMessageIds = new List<string>();
+                foreach (var messageId in conversation.RecentMessages)
+                {
+                    var messageFilter = Builders<Message>.Filter.Eq(m => m.Id, messageId);
+                    var messageExists = await _messagesCollection
+                        .Find(messageFilter)
+                        .AnyAsync(cancellationToken);
+
+                    if (messageExists)
+                    {
+                        existingMessageIds.Add(messageId);
+                    }
+                }
+
+                // Update conversation if any messages were removed
+                if (existingMessageIds.Count != conversation.RecentMessages.Count)
+                {
+                    var update = Builders<Conversation>.Update
+                        .Set(c => c.RecentMessages, existingMessageIds);
+
+                    var updateResult = await _conversationsCollection
+                        .UpdateOneAsync(conversationFilter, update, cancellationToken: cancellationToken);
+
+                    if (updateResult.IsAcknowledged && updateResult.ModifiedCount > 0)
+                    {
+                        updatedCount++;
+                        var removedCount = conversation.RecentMessages.Count - existingMessageIds.Count;
+                        _logger.LogDebug("Updated conversation {ConversationId}: removed {RemovedCount} archived message(s) from recentMessages",
+                            conversationId, removedCount);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update recentMessages for conversation {ConversationId}", conversationId);
+            }
+        }
+
+        _logger.LogInformation("Updated recentMessages array for {UpdatedCount} conversations", updatedCount);
     }
 }
