@@ -107,4 +107,10 @@ public class Participant
     /// </summary>
     [BsonElement("lastReadAt")]
     public DateTime? LastReadAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the role of the participant in the conversation (e.g., admin, member)
+    /// </summary>
+    [BsonElement("role")]
+    public string Role { get; set; } = "member";
 }
