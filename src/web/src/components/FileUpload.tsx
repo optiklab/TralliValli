@@ -8,9 +8,10 @@
  * - File metadata display
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fileUploadService, type UploadOptions, type UploadResult } from '@/services';
 import type { UploadProgress } from '@/types/api';
+import { formatFileSize } from '@/utils/fileUtils';
 
 export interface FileUploadProps {
   file: File;
@@ -32,6 +33,7 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null);
   const [abortController] = useState(() => new AbortController());
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const isUploadingRef = useRef(true);
 
   useEffect(() => {
     const uploadFile = async () => {
@@ -51,9 +53,11 @@ export function FileUpload({
         }
 
         setIsUploading(false);
+        isUploadingRef.current = false;
         onUploadComplete?.(result);
       } catch (err) {
         setIsUploading(false);
+        isUploadingRef.current = false;
         const errorMessage = err instanceof Error ? err.message : 'Upload failed';
         setError(errorMessage);
         onUploadError?.(err instanceof Error ? err : new Error(errorMessage));
@@ -64,22 +68,17 @@ export function FileUpload({
 
     // Cleanup on unmount
     return () => {
-      if (isUploading) {
+      if (isUploadingRef.current) {
         abortController.abort();
       }
     };
-  }, [file, conversationId, onUploadComplete, onUploadError, abortController, isUploading]);
+  }, [file, conversationId, onUploadComplete, onUploadError, abortController]);
 
   const handleCancel = () => {
     abortController.abort();
     setIsUploading(false);
+    isUploadingRef.current = false;
     onCancel?.();
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const isImage = file.type.startsWith('image/');

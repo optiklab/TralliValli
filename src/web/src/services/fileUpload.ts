@@ -90,41 +90,33 @@ async function compressImage(file: File): Promise<File> {
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('Failed to compress image'));
-              return;
-            }
+        // Try compression with multiple quality levels
+        const tryCompress = (quality: number, attempt: number = 1): void => {
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error('Failed to compress image'));
+                return;
+              }
 
-            // If still too large, try with lower quality
-            if (blob.size > MAX_IMAGE_SIZE_BYTES) {
-              canvas.toBlob(
-                (blob2) => {
-                  if (!blob2) {
-                    reject(new Error('Failed to compress image'));
-                    return;
-                  }
-                  const compressedFile = new File([blob2], file.name, {
-                    type: file.type,
-                    lastModified: Date.now(),
-                  });
-                  resolve(compressedFile);
-                },
-                file.type,
-                0.7 // Lower quality
-              );
-            } else {
-              const compressedFile = new File([blob], file.name, {
-                type: file.type,
-                lastModified: Date.now(),
-              });
-              resolve(compressedFile);
-            }
-          },
-          file.type,
-          COMPRESSION_QUALITY
-        );
+              // If within size limit or we've tried enough times, resolve
+              if (blob.size <= MAX_IMAGE_SIZE_BYTES || attempt >= 3) {
+                const compressedFile = new File([blob], file.name, {
+                  type: file.type,
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                // Try again with lower quality
+                tryCompress(Math.max(0.5, quality - 0.2), attempt + 1);
+              }
+            },
+            file.type,
+            quality
+          );
+        };
+
+        tryCompress(COMPRESSION_QUALITY);
       };
 
       img.onerror = () => {
@@ -292,10 +284,26 @@ export class FileUploadService {
       try {
         fileToUpload = await compressImage(file);
         thumbnailDataUrl = await generateThumbnail(fileToUpload);
+
+        // Validate compressed size
+        if (fileToUpload.size > MAX_IMAGE_SIZE_BYTES) {
+          throw new Error(
+            `Image is too large after compression (${(fileToUpload.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB.`
+          );
+        }
       } catch (error) {
-        console.warn('Image compression/thumbnail generation failed:', error);
-        // Continue with original file if compression fails
-        fileToUpload = file;
+        // If compression fails or image is still too large, throw error
+        if (error instanceof Error && error.message.includes('too large')) {
+          throw error;
+        }
+        throw new Error('Failed to process image for upload');
+      }
+    } else {
+      // Validate non-image file size
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        throw new Error(
+          `File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB.`
+        );
       }
     }
 
@@ -327,13 +335,6 @@ export class FileUploadService {
       thumbnailDataUrl,
       metadata,
     };
-  }
-
-  /**
-   * Cancel an upload (use AbortController with uploadFile)
-   */
-  static createAbortController(): AbortController {
-    return new AbortController();
   }
 }
 

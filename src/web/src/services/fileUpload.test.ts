@@ -447,13 +447,18 @@ describe('FileUploadService', () => {
         })
       ).rejects.toThrow('Upload was cancelled');
     });
-  });
 
-  describe('createAbortController', () => {
-    it('should create an AbortController', () => {
-      const controller = FileUploadService.createAbortController();
-      expect(controller).toBeInstanceOf(AbortController);
-      expect(controller.signal).toBeDefined();
+    it('should reject files larger than 2MB', async () => {
+      const largeFile = new File([new ArrayBuffer(3 * 1024 * 1024)], 'large.pdf', {
+        type: 'application/pdf',
+      });
+
+      await expect(
+        fileUploadService.uploadFile({
+          conversationId: 'conv-123',
+          file: largeFile,
+        })
+      ).rejects.toThrow('too large');
     });
   });
 

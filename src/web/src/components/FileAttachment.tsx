@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import type { FileMetadata } from '@/types/api';
+import { formatFileSize } from '@/utils/fileUtils';
 
 export interface FileAttachmentProps {
   file: FileMetadata;
@@ -19,14 +20,15 @@ export interface FileAttachmentProps {
 export function FileAttachment({ file, thumbnail, onDownload }: FileAttachmentProps) {
   const [imageError, setImageError] = useState(false);
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const handleDownload = () => {
     onDownload?.(file);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleDownload();
+    }
   };
 
   const isImage = file.mimeType.startsWith('image/');
@@ -36,13 +38,21 @@ export function FileAttachment({ file, thumbnail, onDownload }: FileAttachmentPr
       {/* Thumbnail or File Icon */}
       <div className="flex-shrink-0">
         {isImage && thumbnail && !imageError ? (
-          <img
-            src={thumbnail}
-            alt={file.fileName}
-            className="w-16 h-16 rounded object-cover cursor-pointer hover:opacity-80"
+          <div
+            role="button"
+            tabIndex={0}
             onClick={handleDownload}
-            onError={() => setImageError(true)}
-          />
+            onKeyDown={handleKeyDown}
+            className="cursor-pointer hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+            aria-label={`Download ${file.fileName}`}
+          >
+            <img
+              src={thumbnail}
+              alt={file.fileName}
+              className="w-16 h-16 rounded object-cover"
+              onError={() => setImageError(true)}
+            />
+          </div>
         ) : (
           <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
             <svg
