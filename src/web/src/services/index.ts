@@ -8,3 +8,5 @@ export {
   type ConnectionStateHandler,
   type SignalRServiceOptions,
 } from './signalr';
+
+export { apiClient, default as api } from './api';
