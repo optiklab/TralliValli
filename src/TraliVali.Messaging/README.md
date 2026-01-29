@@ -1,17 +1,196 @@
-# Azure Communication Services Email Integration
+# TraliVali Messaging Module
 
-This module provides email functionality for TraliVali using Azure Communication Services.
+This module provides messaging functionality for TraliVali, including email and push notifications.
 
 ## Features
 
-- **Magic Link Authentication**: Send passwordless authentication links to users
-- **Invite Notifications**: Send platform invitations to new users
-- **Password Reset**: Send secure password reset links
-- **HTML Email Templates**: Professional, responsive email templates stored as embedded resources
-- **Configuration Validation**: Automatic validation of email configuration on startup
+- **Email Integration**: Azure Communication Services email functionality
+  - Magic Link Authentication
+  - Invite Notifications
+  - Password Reset
+  - Welcome Emails
+- **Push Notifications**: Extensible notification service with stub implementation
+- **HTML Email Templates**: Professional, responsive email templates
+- **Configuration Validation**: Automatic validation on startup
 - **Logging**: Comprehensive logging using Microsoft.Extensions.Logging
 
-## Setup
+---
+
+## Push Notifications
+
+### Overview
+
+The notification service provides a pluggable architecture for sending push notifications to users. Currently, a no-operation (NoOp) stub implementation is included for development and testing purposes.
+
+### Features
+
+- **Single User Notifications**: Send push notifications to individual users
+- **Batch Notifications**: Send the same notification to multiple users simultaneously
+- **Stub Implementation**: NoOpNotificationService logs notifications without sending them
+- **Future-Ready**: Interface designed for easy integration with real notification providers
+
+### Setup
+
+#### 1. Configure appsettings.json
+
+Add the following configuration section to your `appsettings.json`:
+
+```json
+{
+  "Notifications": {
+    "Provider": "None"
+  }
+}
+```
+
+**Configuration Options:**
+- `Provider`: The notification provider to use
+  - `"None"`: Uses NoOpNotificationService (logs only, no actual notifications sent)
+  - Future providers will be added here (e.g., "Firebase", "OneSignal", "AzureNotificationHub")
+
+#### 2. Register the Service
+
+The service is automatically registered in `Program.cs`:
+
+```csharp
+using TraliVali.Messaging;
+
+// Add notification service
+builder.Services.AddNotificationService(builder.Configuration);
+```
+
+The service is registered as a singleton for optimal performance.
+
+### Usage
+
+#### Inject the Service
+
+```csharp
+public class YourService
+{
+    private readonly INotificationService _notificationService;
+    
+    public YourService(INotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+}
+```
+
+#### Send a Push Notification to a Single User
+
+```csharp
+await _notificationService.SendPushNotificationAsync(
+    userId: "user123",
+    title: "New Message",
+    body: "You have a new message from John",
+    cancellationToken: cancellationToken
+);
+```
+
+#### Send Batch Notifications to Multiple Users
+
+```csharp
+var userIds = new[] { "user1", "user2", "user3" };
+await _notificationService.SendBatchNotificationsAsync(
+    userIds: userIds,
+    title: "System Maintenance",
+    body: "System will undergo maintenance at 2 AM",
+    cancellationToken: cancellationToken
+);
+```
+
+### Current Implementation: NoOpNotificationService
+
+The `NoOpNotificationService` is a stub implementation that:
+- ✅ Validates all input parameters
+- ✅ Logs notification details at Information level
+- ✅ Returns successfully without sending actual notifications
+- ✅ Useful for development, testing, and when notifications are disabled
+
+**Example Log Output:**
+```
+[12:34:56 INF] NoOpNotificationService initialized - notifications will be logged but not sent
+[12:35:01 INF] Would send push notification to user user123: Title='New Message', Body='You have a new message from John'
+[12:35:10 INF] Would send batch notification to 3 users: Title='System Maintenance', Body='System will undergo maintenance at 2 AM', UserIds=[user1, user2, user3]
+```
+
+### Future Implementation
+
+To implement a real notification provider:
+
+1. **Create a new provider implementation:**
+   ```csharp
+   public class FirebaseNotificationService : INotificationService
+   {
+       // Implement SendPushNotificationAsync
+       // Implement SendBatchNotificationsAsync
+   }
+   ```
+
+2. **Add configuration support:**
+   - Update `NotificationConfiguration` to support the new provider
+   - Add provider-specific configuration properties
+   - Update validation logic
+
+3. **Update service registration:**
+   - Modify `NotificationServiceExtensions.AddNotificationService()`
+   - Add conditional registration based on `Provider` setting
+
+4. **Update documentation:**
+   - Add setup instructions for the new provider
+   - Document configuration options
+   - Provide usage examples
+
+### Testing
+
+Unit tests are provided in `tests/TraliVali.Tests/Notifications/`:
+- `NoOpNotificationServiceTests.cs` - Service behavior tests
+- `NotificationConfigurationTests.cs` - Configuration validation tests
+- `NotificationServiceExtensionsTests.cs` - Service registration tests
+
+Run tests with:
+```bash
+dotnet test --filter "FullyQualifiedName~TraliVali.Tests.Notifications"
+```
+
+### Error Handling
+
+The service provides comprehensive error handling:
+- Validates all input parameters
+- Throws `ArgumentNullException` for null required parameters
+- Throws `ArgumentException` for empty or whitespace-only strings
+- Logs all operations and errors using `ILogger`
+- Future implementations should throw `InvalidOperationException` for provider-specific errors
+
+### Interface Reference
+
+```csharp
+public interface INotificationService
+{
+    Task SendPushNotificationAsync(
+        string userId, 
+        string title, 
+        string body, 
+        CancellationToken cancellationToken = default);
+
+    Task SendBatchNotificationsAsync(
+        string[] userIds, 
+        string title, 
+        string body, 
+        CancellationToken cancellationToken = default);
+}
+```
+
+**Parameters:**
+- `userId` / `userIds`: User identifier(s) - must not be null or empty
+- `title`: Notification title - must not be null or empty  
+- `body`: Notification content - must not be null or empty
+- `cancellationToken`: Optional cancellation token
+
+---
+
+## Email Integration (Azure Communication Services)
 
 ### 1. Install Azure Communication Services
 
