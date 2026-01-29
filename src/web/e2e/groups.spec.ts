@@ -38,8 +38,8 @@ test.describe('Group Conversations', () => {
     // Add at least one member (if there are users available)
     await memberSearch.fill('test');
     
-    // Wait a moment for search results
-    await page.waitForTimeout(1000);
+    // Wait for search results to appear
+    await page.locator('[role="listbox"] > *, .user-item, .member-item').first().waitFor({ timeout: 3000 }).catch(() => {});
     
     // Click first result if available
     const firstResult = page.locator('[role="listbox"] > *, .user-item, .member-item').first();
@@ -107,7 +107,7 @@ test.describe('Group Conversations', () => {
         
         // Search for a user
         await memberSearch.fill('test');
-        await page.waitForTimeout(500);
+        await page.locator('[role="listbox"] > *, .user-item').first().waitFor({ timeout: 3000 }).catch(() => {});
         
         // Select first result if available
         const firstResult = page.locator('[role="listbox"] > *, .user-item').first();
@@ -118,8 +118,12 @@ test.describe('Group Conversations', () => {
           const confirmButton = page.locator('button:has-text("Add"), button:has-text("Confirm")').last();
           await confirmButton.click();
           
-          // Should show success message or updated member list
-          await page.waitForTimeout(2000);
+          // Wait for success by checking if button is gone or success indicator appears
+          await Promise.race([
+            confirmButton.waitFor({ state: 'hidden', timeout: 5000 }),
+            page.locator('text=/added|success/i').waitFor({ timeout: 5000 })
+          ]).catch(() => {});
+          
           expect(page.url()).toBeTruthy();
         }
       }

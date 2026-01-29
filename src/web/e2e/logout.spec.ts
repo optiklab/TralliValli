@@ -131,8 +131,11 @@ test.describe('Logout', () => {
     if (await logoutButton.count() > 0) {
       await logoutButton.click();
       
-      // Wait a moment for dialog to appear
-      await page.waitForTimeout(500);
+      // Wait briefly for potential dialog
+      await Promise.race([
+        page.waitForURL(/login|signin/i, { timeout: 2000 }),
+        page.locator('[role="dialog"], text=/confirm|sure/i').waitFor({ timeout: 2000 })
+      ]).catch(() => {});
       
       // If no browser dialog, check for custom modal
       if (!dialogAppeared) {

@@ -80,10 +80,7 @@ test.describe('File Upload and Sharing', () => {
       // Upload file
       await fileInput.setInputFiles(testFilePath);
       
-      // Wait for file to be processed
-      await page.waitForTimeout(1000);
-      
-      // Should show file preview or name
+      // Wait for file to be processed - wait for file name to appear
       const fileName = path.basename(testFilePath);
       const filePreview = page.locator(`text="${fileName}"`);
       
@@ -114,7 +111,11 @@ test.describe('File Upload and Sharing', () => {
       const fileInput = page.locator('input[type="file"]').first();
       await fileInput.setInputFiles(testImagePath);
       
-      await page.waitForTimeout(1000);
+      // Wait for file processing by checking for image preview or file name
+      await Promise.race([
+        page.locator('img[src*="blob:"], img[src*="data:"], .image-preview').waitFor({ timeout: 5000 }),
+        page.locator(`text="${path.basename(testImagePath)}"`).waitFor({ timeout: 5000 })
+      ]).catch(() => {}); // Ignore if neither appears quickly
       
       // Should show image preview
       const imagePreview = page.locator('img[src*="blob:"], img[src*="data:"], .image-preview');
@@ -131,9 +132,8 @@ test.describe('File Upload and Sharing', () => {
         
         // Verify image appears in thread
         const imageName = path.basename(testImagePath);
-        await page.waitForTimeout(2000);
         
-        // Look for the image or its name in messages
+        // Look for the image or its name in messages - wait for it to appear
         const sentImage = page.locator(`img, text="${imageName}"`).last();
         await expect(sentImage).toBeVisible({ timeout: 10000 });
       }
@@ -150,7 +150,9 @@ test.describe('File Upload and Sharing', () => {
       const fileInput = page.locator('input[type="file"]').first();
       await fileInput.setInputFiles(testFilePath);
       
-      await page.waitForTimeout(1000);
+      // Wait for file to appear by checking for file name
+      const fileName = path.basename(testFilePath);
+      await page.locator(`text="${fileName}"`).waitFor({ timeout: 5000 }).catch(() => {});
       
       // Look for file size indicator (KB, MB, bytes, etc.)
       const sizePattern = /\d+\s*(bytes|KB|MB|B)/i;
@@ -173,7 +175,9 @@ test.describe('File Upload and Sharing', () => {
       const fileInput = page.locator('input[type="file"]').first();
       await fileInput.setInputFiles(testFilePath);
       
-      await page.waitForTimeout(1000);
+      // Wait for file name to appear
+      const fileName = path.basename(testFilePath);
+      await page.locator(`text="${fileName}"`).waitFor({ timeout: 5000 }).catch(() => {});
       
       // Look for remove/cancel button
       const removeButton = page.locator(
@@ -208,9 +212,7 @@ test.describe('File Upload and Sharing', () => {
         // Upload multiple files
         await fileInput.setInputFiles([testFilePath, testImagePath]);
         
-        await page.waitForTimeout(1000);
-        
-        // Should show both files
+        // Wait for files to appear
         const file1Name = path.basename(testFilePath);
         const file2Name = path.basename(testImagePath);
         
