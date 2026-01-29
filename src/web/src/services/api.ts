@@ -24,11 +24,14 @@ import {
   type ConversationResponse,
   type CreateDirectConversationRequest,
   type CreateGroupConversationRequest,
+  type FileMetadata,
   type LogoutRequest,
   type LogoutResponse,
   type MessageResponse,
   type PaginatedConversationsResponse,
   type PaginatedMessagesResponse,
+  type PresignedUrlRequest,
+  type PresignedUrlResponse,
   type RefreshTokenRequest,
   type RefreshTokenResponse,
   type RegisterRequest,
@@ -531,10 +534,36 @@ class ApiClient {
   // Add methods here when user endpoints are implemented
 
   // ============================================================================
-  // Files Methods (Placeholder)
+  // Files Methods
   // ============================================================================
-  // Note: No file endpoints found in the API controllers yet
-  // Add methods here when file endpoints are implemented
+
+  /**
+   * Get a presigned URL for file upload
+   */
+  async getPresignedUrl(data: PresignedUrlRequest): Promise<PresignedUrlResponse> {
+    return this.request<PresignedUrlResponse>('/files/presigned-url', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Get file metadata by ID
+   */
+  async getFileMetadata(fileId: string): Promise<FileMetadata> {
+    return this.request<FileMetadata>(`/files/${fileId}`, {
+      method: 'GET',
+    });
+  }
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(fileId: string): Promise<void> {
+    return this.request<void>(`/files/${fileId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 // ============================================================================

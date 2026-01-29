@@ -17,3 +17,10 @@ export {
   type SyncMetadata,
   type ConflictResolutionOptions,
 } from './offlineStorage';
+
+export {
+  FileUploadService,
+  fileUploadService,
+  type UploadOptions,
+  type UploadResult,
+} from './fileUpload';
