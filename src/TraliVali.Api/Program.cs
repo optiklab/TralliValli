@@ -146,6 +146,7 @@ try
     builder.Services.AddSingleton<IJwtService, JwtService>();
     builder.Services.AddSingleton<IMagicLinkService, MagicLinkService>();
     builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
+    builder.Services.AddNotificationService(builder.Configuration);
     
     // Register InviteService
     var inviteSigningKey = builder.Configuration.GetValue<string>("Invite:SigningKey")
