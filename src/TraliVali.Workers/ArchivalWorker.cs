@@ -148,6 +148,13 @@ public class ArchivalWorker : BackgroundService
     {
         _logger.LogInformation("Starting archival process for messages older than {RetentionDays} days", _configuration.RetentionDays);
 
+        // Validate blob storage is configured if DeleteAfterArchive is enabled
+        if (_configuration.DeleteAfterArchive && _containerClient == null)
+        {
+            _logger.LogError("DeleteAfterArchive is enabled but blob storage is not configured. Skipping archival to prevent data loss");
+            return;
+        }
+
         var cutoffDate = DateTime.UtcNow.AddDays(-_configuration.RetentionDays);
         var totalArchived = 0;
         var totalDeleted = 0;
@@ -302,26 +309,23 @@ public class ArchivalWorker : BackgroundService
                     continue;
                 }
 
-                // Check which message IDs in recentMessages still exist in the messages collection
-                var existingMessageIds = new List<string>();
-                foreach (var messageId in conversation.RecentMessages)
-                {
-                    var messageFilter = Builders<Message>.Filter.Eq(m => m.Id, messageId);
-                    var messageExists = await _messagesCollection
-                        .Find(messageFilter)
-                        .AnyAsync(cancellationToken);
+                // Batch check which message IDs in recentMessages still exist
+                var messageFilter = Builders<Message>.Filter.In(m => m.Id, conversation.RecentMessages);
+                var existingMessages = await _messagesCollection
+                    .Find(messageFilter)
+                    .Project(m => m.Id)
+                    .ToListAsync(cancellationToken);
 
-                    if (messageExists)
-                    {
-                        existingMessageIds.Add(messageId);
-                    }
-                }
+                var existingMessageIds = existingMessages.ToHashSet();
+                var filteredRecentMessages = conversation.RecentMessages
+                    .Where(id => existingMessageIds.Contains(id))
+                    .ToList();
 
                 // Update conversation if any messages were removed
-                if (existingMessageIds.Count != conversation.RecentMessages.Count)
+                if (filteredRecentMessages.Count != conversation.RecentMessages.Count)
                 {
                     var update = Builders<Conversation>.Update
-                        .Set(c => c.RecentMessages, existingMessageIds);
+                        .Set(c => c.RecentMessages, filteredRecentMessages);
 
                     var updateResult = await _conversationsCollection
                         .UpdateOneAsync(conversationFilter, update, cancellationToken: cancellationToken);
@@ -329,7 +333,7 @@ public class ArchivalWorker : BackgroundService
                     if (updateResult.IsAcknowledged && updateResult.ModifiedCount > 0)
                     {
                         updatedCount++;
-                        var removedCount = conversation.RecentMessages.Count - existingMessageIds.Count;
+                        var removedCount = conversation.RecentMessages.Count - filteredRecentMessages.Count;
                         _logger.LogDebug("Updated conversation {ConversationId}: removed {RemovedCount} archived message(s) from recentMessages",
                             conversationId, removedCount);
                     }

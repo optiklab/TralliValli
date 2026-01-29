@@ -264,8 +264,22 @@ public class ArchivalWorkerCleanupTests : IDisposable
         Assert.True(config.RetentionDays > 0);
         Assert.True(config.BatchSize > 0);
         Assert.NotNull(config.BlobContainerName);
-        // DeleteAfterArchive can be true or false, both are valid
-        Assert.True(config.DeleteAfterArchive == true || config.DeleteAfterArchive == false);
+        Assert.NotNull(config.BlobStorageConnectionString);
+    }
+
+    [Fact]
+    public void Configuration_DeleteAfterArchive_WithoutBlobStorage_IsValid()
+    {
+        // Arrange - Configuration with DeleteAfterArchive but no blob storage
+        var config = new ArchivalWorkerConfiguration
+        {
+            BlobStorageConnectionString = "",
+            DeleteAfterArchive = true
+        };
+
+        // Act & Assert - Configuration should be valid (runtime validation will prevent data loss)
+        Assert.True(config.DeleteAfterArchive);
+        Assert.Empty(config.BlobStorageConnectionString);
     }
 
     public void Dispose()
