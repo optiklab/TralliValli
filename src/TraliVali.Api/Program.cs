@@ -161,6 +161,7 @@ try
     builder.Services.AddScoped<IRepository<User>, UserRepository>();
     builder.Services.AddScoped<IRepository<Conversation>, ConversationRepository>();
     builder.Services.AddScoped<IRepository<Invite>, InviteRepository>();
+    builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 
     var app = builder.Build();
 
