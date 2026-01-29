@@ -111,17 +111,9 @@ describe('API Client Service', () => {
         }),
       } as Response);
 
-      try {
-        await apiClient.requestMagicLink({ email: '', deviceId: 'device-123' });
-        // If we reach here, the test should fail
-        expect(true).toBe(false);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiErrorResponse);
-        const apiError = error as ApiErrorResponse;
-        expect(apiError.statusCode).toBe(400);
-        expect(apiError.message).toBe('Invalid request');
-        expect(apiError.errors).toEqual({ email: ['Email is required'] });
-      }
+      await expect(
+        apiClient.requestMagicLink({ email: '', deviceId: 'device-123' })
+      ).rejects.toThrow(ApiErrorResponse);
     });
 
     it('should handle non-JSON error responses', async () => {

@@ -4,16 +4,25 @@
  * Provides secure storage for JWT access and refresh tokens.
  * Uses localStorage as httpOnly cookies require server-side implementation.
  *
- * Security considerations:
- * - Tokens are stored in localStorage (accessible to JavaScript)
- * - In production, consider httpOnly cookies set by the server for better security
+ * ⚠️ SECURITY WARNING:
+ * - Tokens in localStorage are accessible to JavaScript and vulnerable to XSS attacks
+ * - Always implement Content Security Policy (CSP) headers
  * - Always use HTTPS to prevent token interception
+ * - Consider server-side httpOnly cookies for production (requires backend changes)
+ *
+ * Production considerations:
+ * - Implement httpOnly cookies on the server side
+ * - Use secure, same-site cookie attributes
+ * - Implement proper CORS configuration
  */
 
 const ACCESS_TOKEN_KEY = 'tralli_valli_access_token';
 const REFRESH_TOKEN_KEY = 'tralli_valli_refresh_token';
 const TOKEN_EXPIRY_KEY = 'tralli_valli_token_expiry';
 const REFRESH_EXPIRY_KEY = 'tralli_valli_refresh_expiry';
+
+// Token expiry buffer: refresh token 60 seconds before actual expiry
+const TOKEN_EXPIRY_BUFFER_MS = 60 * 1000;
 
 export interface StoredTokens {
   accessToken: string;
@@ -45,8 +54,9 @@ export function storeTokens(tokens: {
     localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt.toISOString());
     localStorage.setItem(REFRESH_EXPIRY_KEY, refreshExpiresAt.toISOString());
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Failed to store tokens:', error);
-    throw new Error('Failed to store authentication tokens');
+    throw new Error(`Failed to store authentication tokens: ${errorMessage}`);
   }
 }
 
@@ -111,9 +121,8 @@ export function isAccessTokenExpired(): boolean {
     }
 
     const expiry = new Date(expiryStr);
-    // Add 60 second buffer to refresh before actual expiry
-    const bufferMs = 60 * 1000;
-    return Date.now() >= expiry.getTime() - bufferMs;
+    // Add buffer to refresh before actual expiry
+    return Date.now() >= expiry.getTime() - TOKEN_EXPIRY_BUFFER_MS;
   } catch (error) {
     console.error('Failed to check token expiry:', error);
     return true;

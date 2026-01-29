@@ -173,6 +173,21 @@ class ApiClient {
 
   /**
    * Add a request interceptor
+   *
+   * Interceptors are called in the order they are added. Each interceptor
+   * receives the RequestInit object and can modify it before the request is made.
+   *
+   * @param interceptor - A function that receives and returns a RequestInit object
+   * @example
+   * ```typescript
+   * apiClient.addRequestInterceptor((request) => {
+   *   request.headers = {
+   *     ...request.headers,
+   *     'X-Custom-Header': 'value',
+   *   };
+   *   return request;
+   * });
+   * ```
    */
   addRequestInterceptor(interceptor: RequestInterceptor): void {
     this.requestInterceptors.push(interceptor);
@@ -180,6 +195,20 @@ class ApiClient {
 
   /**
    * Add a response interceptor
+   *
+   * Interceptors are called in the order they are added. Each interceptor
+   * receives the Response object and can inspect or modify it.
+   *
+   * @param interceptor - A function that receives and returns a Response object
+   * @example
+   * ```typescript
+   * apiClient.addResponseInterceptor(async (response) => {
+   *   if (response.status === 429) {
+   *     console.warn('Rate limited');
+   *   }
+   *   return response;
+   * });
+   * ```
    */
   addResponseInterceptor(interceptor: ResponseInterceptor): void {
     this.responseInterceptors.push(interceptor);
@@ -296,12 +325,18 @@ class ApiClient {
 
   /**
    * Refresh JWT tokens
+   *
+   * Note: This method is intended for manual token refresh. In most cases,
+   * you should rely on the automatic token refresh handled by the request
+   * interceptor, which includes deduplication logic to prevent multiple
+   * simultaneous refresh requests.
+   *
+   * @param data - The refresh token request
+   * @returns The new access and refresh tokens
    */
   async refresh(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
-    const response = await this.request<RefreshTokenResponse>('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    // Use the deduplication logic from handleTokenRefresh
+    const response = await this.refreshTokens(data.refreshToken);
 
     // Store new tokens
     storeTokens(response);
