@@ -7,9 +7,13 @@ import type { DBSchema, IDBPDatabase } from 'idb';
 const CRYPTO_PWHASH_SALTBYTES = 16;
 const CRYPTO_SECRETBOX_KEYBYTES = 32;
 const CRYPTO_SECRETBOX_NONCEBYTES = 24;
-const CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE = 2;
-const CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE = 67108864; // 64MB
+// Note: OPSLIMIT and MEMLIMIT define computational cost for password hashing
+const CRYPTO_PWHASH_OPSLIMIT_INTERACTIVE = 2; // Argon2 operations limit for interactive use
+const CRYPTO_PWHASH_MEMLIMIT_INTERACTIVE = 67108864; // 64MB memory limit
 const CRYPTO_PWHASH_ALG_DEFAULT = 2; // Argon2id13
+
+// Minimum password length for security
+const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Database schema for cryptographic keys
@@ -89,6 +93,7 @@ export class CryptoKeyExchange {
       this.db.close();
       this.db = null;
     }
+    this.sodiumReady = false;
   }
 
   /**
@@ -106,6 +111,10 @@ export class CryptoKeyExchange {
   /**
    * Generate a new X25519 key pair
    * @returns KeyPair with publicKey and privateKey as Uint8Array
+   *
+   * Note: Uses crypto_box_keypair() which generates Curve25519 keys.
+   * These are compatible with X25519 key exchange via crypto_scalarmult().
+   * Both public and private keys are 32 bytes as per X25519 specification.
    */
   generateKeyPair(): KeyPair {
     this.ensureReady();
@@ -150,9 +159,19 @@ export class CryptoKeyExchange {
    * @param privateKey - Private key to encrypt
    * @param password - Password for encryption (user's password or derived key)
    * @returns Encrypted private key as Base64 string
+   *
+   * Security Notes:
+   * - Uses Argon2id password hashing when available for key derivation
+   * - Falls back to BLAKE2b hash in test environments (less secure, not for production)
+   * - Random salt and nonce ensure different ciphertext for same key/password
    */
   private encryptPrivateKey(privateKey: Uint8Array, password: string): string {
     this.ensureReady();
+
+    // Validate password
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
+    }
 
     // Use fallback constants if libsodium constants are not available
     const saltBytes = _sodium.crypto_pwhash_SALTBYTES ?? CRYPTO_PWHASH_SALTBYTES;
@@ -175,6 +194,12 @@ export class CryptoKeyExchange {
       key = _sodium.crypto_pwhash(keyBytes, password, salt, opsLimit, memLimit, algDefault);
     } catch {
       // Fallback to generic hash for test environments where crypto_pwhash is not available
+      // WARNING: This fallback provides significantly less security than Argon2id
+      // It should only be used in test environments, never in production
+      console.warn(
+        'crypto_pwhash not available, falling back to crypto_generichash (test environment only)'
+      );
+
       // Combine password and salt for key derivation
       const passwordBytes = _sodium.from_string(password);
       const combined = new Uint8Array(passwordBytes.length + salt.length);
@@ -186,6 +211,9 @@ export class CryptoKeyExchange {
     // Encrypt the private key
     const nonce = _sodium.randombytes_buf(nonceBytes);
     const ciphertext = _sodium.crypto_secretbox_easy(privateKey, nonce, key);
+
+    // Clear sensitive key material from memory
+    _sodium.memzero(key);
 
     // Combine salt, nonce, and ciphertext
     const combined = new Uint8Array(salt.length + nonce.length + ciphertext.length);
@@ -201,9 +229,18 @@ export class CryptoKeyExchange {
    * @param encryptedPrivateKey - Encrypted private key as Base64 string
    * @param password - Password for decryption
    * @returns Decrypted private key as Uint8Array
+   *
+   * Security Notes:
+   * - Uses same key derivation as encryption (Argon2id or BLAKE2b fallback)
+   * - Sensitive key material is cleared from memory after use
    */
   private decryptPrivateKey(encryptedPrivateKey: string, password: string): Uint8Array {
     this.ensureReady();
+
+    // Validate password
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long`);
+    }
 
     // Use fallback constants if libsodium constants are not available
     const saltBytes = _sodium.crypto_pwhash_SALTBYTES ?? CRYPTO_PWHASH_SALTBYTES;
@@ -230,7 +267,11 @@ export class CryptoKeyExchange {
 
       key = _sodium.crypto_pwhash(keyBytes, password, salt, opsLimit, memLimit, algDefault);
     } catch {
-      // Fallback to generic hash for test environments
+      // Fallback to generic hash for test environments (must match encryption fallback)
+      console.warn(
+        'crypto_pwhash not available, falling back to crypto_generichash (test environment only)'
+      );
+
       const passwordBytes = _sodium.from_string(password);
       const combinedInput = new Uint8Array(passwordBytes.length + salt.length);
       combinedInput.set(passwordBytes, 0);
@@ -240,6 +281,10 @@ export class CryptoKeyExchange {
 
     // Decrypt the private key
     const privateKey = _sodium.crypto_secretbox_open_easy(ciphertext, nonce, key);
+
+    // Clear sensitive key material from memory
+    _sodium.memzero(key);
+
     if (!privateKey) {
       throw new Error('Failed to decrypt private key. Invalid password or corrupted data.');
     }
@@ -256,11 +301,16 @@ export class CryptoKeyExchange {
   async storeKeyPair(id: string, keyPair: KeyPair, password: string): Promise<void> {
     this.ensureReady();
 
+    // Validate input
+    if (!id || id.trim().length === 0) {
+      throw new Error('Key pair ID cannot be empty');
+    }
+
     const encryptedPrivateKey = this.encryptPrivateKey(keyPair.privateKey, password);
     const publicKeyBase64 = _sodium.to_base64(keyPair.publicKey);
 
     const storedKeyPair: StoredKeyPair = {
-      id,
+      id: id.trim(),
       publicKey: publicKeyBase64,
       encryptedPrivateKey,
       createdAt: new Date().toISOString(),
@@ -273,7 +323,7 @@ export class CryptoKeyExchange {
    * Retrieve a key pair from IndexedDB and decrypt private key
    * @param id - Unique identifier for the key pair
    * @param password - Password to decrypt the private key
-   * @returns KeyPair with decrypted private key
+   * @returns KeyPair with decrypted private key, or null if not found
    */
   async getKeyPair(id: string, password: string): Promise<KeyPair | null> {
     this.ensureReady();
@@ -283,13 +333,20 @@ export class CryptoKeyExchange {
       return null;
     }
 
-    const publicKey = _sodium.from_base64(stored.publicKey);
-    const privateKey = this.decryptPrivateKey(stored.encryptedPrivateKey, password);
+    try {
+      const publicKey = _sodium.from_base64(stored.publicKey);
+      const privateKey = this.decryptPrivateKey(stored.encryptedPrivateKey, password);
 
-    return {
-      publicKey,
-      privateKey,
-    };
+      return {
+        publicKey,
+        privateKey,
+      };
+    } catch (error) {
+      // Re-throw with clearer message if decryption fails
+      throw new Error(
+        `Failed to retrieve key pair: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
   }
 
   /**
