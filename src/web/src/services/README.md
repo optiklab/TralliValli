@@ -1,3 +1,14 @@
+# Services Documentation
+
+This directory contains service layer implementations for interacting with backend services.
+
+## Table of Contents
+
+1. [SignalR Client Service](#signalr-client-service)
+2. [API Client Service](#api-client-service)
+
+---
+
 # SignalR Client Service
 
 A robust SignalR client service for managing WebSocket connections with auto-reconnection, message queuing, and typed event handlers.
@@ -275,6 +286,331 @@ export function useSignalR(hubUrl: string) {
   }, [service]);
 
   return { service, connectionState, isConnected: service.isConnected() };
+}
+```
+
+## License
+
+Part of the TralliValli project.
+
+---
+
+# API Client Service
+
+A centralized HTTP API client with interceptors for JWT token injection, automatic token refresh, and typed error handling.
+
+## Features
+
+- **Fetch-based HTTP Client**: Modern fetch API with typed responses
+- **JWT Token Management**: Automatic injection and refresh
+- **Request Interceptors**: Modify requests before they're sent
+- **Response Interceptors**: Handle responses globally
+- **Typed Error Handling**: Custom `ApiErrorResponse` class
+- **Token Refresh Deduplication**: Prevents multiple simultaneous refresh requests
+- **Secure Token Storage**: LocalStorage with expiry checking
+
+## Quick Start
+
+```typescript
+import { apiClient } from '@services/api';
+import { ApiErrorResponse } from '@types/api';
+
+// Make authenticated requests
+try {
+  const conversations = await apiClient.listConversations();
+  console.log('Conversations:', conversations);
+} catch (error) {
+  if (error instanceof ApiErrorResponse) {
+    console.error('API Error:', error.statusCode, error.message);
+  }
+}
+```
+
+## Authentication
+
+### Request Magic Link
+
+```typescript
+const response = await apiClient.requestMagicLink({
+  email: 'user@example.com',
+  deviceId: 'device-123',
+});
+```
+
+### Verify Magic Link
+
+```typescript
+const response = await apiClient.verifyMagicLink({
+  token: 'magic-link-token',
+});
+// Tokens are automatically stored
+```
+
+### Logout
+
+```typescript
+import { getAccessToken } from '@utils/tokenStorage';
+
+const accessToken = getAccessToken();
+if (accessToken) {
+  await apiClient.logout({ accessToken });
+}
+// Tokens are automatically cleared
+```
+
+## Conversations API
+
+```typescript
+// List conversations
+const response = await apiClient.listConversations({ page: 1, pageSize: 20 });
+
+// Create direct conversation
+const conversation = await apiClient.createDirectConversation({
+  otherUserId: 'user-456',
+});
+
+// Create group conversation
+const group = await apiClient.createGroupConversation({
+  name: 'Project Team',
+  memberUserIds: ['user-456', 'user-789'],
+});
+
+// Get conversation
+const conv = await apiClient.getConversation('conversation-123');
+
+// Update group metadata
+const updated = await apiClient.updateGroupMetadata('conversation-123', {
+  name: 'New Name',
+  metadata: { key: 'value' },
+});
+
+// Add member
+const withMember = await apiClient.addMember('conversation-123', {
+  userId: 'user-999',
+  role: 'member',
+});
+
+// Remove member
+const removed = await apiClient.removeMember('conversation-123', 'user-999');
+```
+
+## Messages API
+
+```typescript
+// List messages
+const response = await apiClient.listMessages('conversation-123', {
+  limit: 50,
+  before: '2024-01-01T00:00:00Z', // Optional cursor
+});
+
+// Search messages
+const results = await apiClient.searchMessages('conversation-123', {
+  query: 'search term',
+  limit: 20,
+});
+
+// Delete message
+const deleted = await apiClient.deleteMessage('message-456');
+```
+
+## Error Handling
+
+All API methods throw `ApiErrorResponse` on errors:
+
+```typescript
+import { ApiErrorResponse } from '@types/api';
+
+try {
+  await apiClient.someMethod();
+} catch (error) {
+  if (error instanceof ApiErrorResponse) {
+    console.error('Status:', error.statusCode);
+    console.error('Message:', error.message);
+    console.error('Field errors:', error.errors);
+    console.error('Trace ID:', error.traceId);
+    
+    // Handle specific status codes
+    if (error.statusCode === 401) {
+      // Redirect to login
+    } else if (error.statusCode === 403) {
+      // Show permission denied
+    } else if (error.statusCode === 404) {
+      // Show not found
+    }
+  }
+}
+```
+
+## Token Storage
+
+Token storage is handled automatically, but utilities are available:
+
+```typescript
+import {
+  getAccessToken,
+  getRefreshToken,
+  isAuthenticated,
+  isAccessTokenExpired,
+  clearTokens,
+} from '@utils/tokenStorage';
+
+// Check authentication
+if (isAuthenticated()) {
+  console.log('User is logged in');
+}
+
+// Get tokens
+const accessToken = getAccessToken();
+const refreshToken = getRefreshToken();
+
+// Check expiry
+if (isAccessTokenExpired()) {
+  console.log('Token needs refresh');
+}
+
+// Clear tokens
+clearTokens();
+```
+
+## Custom Interceptors
+
+Extend the API client with custom interceptors:
+
+```typescript
+import { apiClient } from '@services/api';
+
+// Add custom request header
+apiClient.addRequestInterceptor((request) => {
+  request.headers = {
+    ...request.headers,
+    'X-Custom-Header': 'value',
+  };
+  return request;
+});
+
+// Log all responses
+apiClient.addResponseInterceptor(async (response) => {
+  console.log('Response:', response.status, response.url);
+  return response;
+});
+```
+
+## Automatic Token Refresh
+
+The API client automatically refreshes tokens:
+
+- Tokens are refreshed 60 seconds before expiry
+- Refresh requests are deduplicated
+- Failed refresh clears tokens and requires re-authentication
+
+Manual refresh (usually not needed):
+
+```typescript
+import { getRefreshToken } from '@utils/tokenStorage';
+
+const refreshToken = getRefreshToken();
+if (refreshToken) {
+  await apiClient.refresh({ refreshToken });
+}
+```
+
+## Security Considerations
+
+⚠️ **Important Security Notes:**
+
+1. **XSS Vulnerability**: Tokens in localStorage are accessible to JavaScript
+   - Implement Content Security Policy (CSP) headers
+   - Sanitize all user inputs
+   - Avoid third-party scripts when possible
+
+2. **HTTPS Required**: Always use HTTPS in production
+   - Prevents token interception
+   - Required for secure authentication
+
+3. **HttpOnly Cookies (Recommended for Production)**:
+   - More secure than localStorage
+   - Requires backend implementation
+   - Not accessible to JavaScript
+
+4. **Never expose tokens**:
+   - Don't log tokens
+   - Don't include in URLs
+   - Don't send over insecure connections
+
+## API Reference
+
+### Authentication Methods
+
+- `requestMagicLink(data: RequestMagicLinkRequest): Promise<RequestMagicLinkResponse>`
+- `verifyMagicLink(data: VerifyMagicLinkRequest): Promise<VerifyMagicLinkResponse>`
+- `refresh(data: RefreshTokenRequest): Promise<RefreshTokenResponse>`
+- `logout(data: LogoutRequest): Promise<LogoutResponse>`
+- `register(data: RegisterRequest): Promise<RegisterResponse>`
+- `validateInvite(token: string): Promise<ValidateInviteResponse>`
+
+### Conversation Methods
+
+- `listConversations(params?: { page?: number; pageSize?: number }): Promise<PaginatedConversationsResponse>`
+- `createDirectConversation(data: CreateDirectConversationRequest): Promise<ConversationResponse>`
+- `createGroupConversation(data: CreateGroupConversationRequest): Promise<ConversationResponse>`
+- `getConversation(id: string): Promise<ConversationResponse>`
+- `updateGroupMetadata(id: string, data: UpdateGroupMetadataRequest): Promise<ConversationResponse>`
+- `addMember(id: string, data: AddMemberRequest): Promise<ConversationResponse>`
+- `removeMember(id: string, userId: string): Promise<ConversationResponse>`
+
+### Message Methods
+
+- `listMessages(conversationId: string, params?: { limit?: number; before?: string }): Promise<PaginatedMessagesResponse>`
+- `searchMessages(conversationId: string, data: SearchMessagesRequest): Promise<SearchMessagesResponse>`
+- `deleteMessage(messageId: string): Promise<MessageResponse>`
+
+## Testing
+
+Comprehensive tests included:
+
+- Token storage: 26 tests
+- API client: 25 tests
+- All edge cases covered
+
+Run tests:
+
+```bash
+npm test
+```
+
+## Example: React Hook
+
+```typescript
+import { useState, useEffect } from 'react';
+import { apiClient } from '@services/api';
+import { isAuthenticated } from '@utils/tokenStorage';
+
+export function useConversations() {
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function fetchConversations() {
+      if (!isAuthenticated()) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiClient.listConversations();
+        setConversations(response.conversations);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchConversations();
+  }, []);
+
+  return { conversations, loading, error };
 }
 ```
 
