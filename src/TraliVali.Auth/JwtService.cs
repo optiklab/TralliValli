@@ -73,6 +73,7 @@ public class JwtService : IJwtService, IDisposable
             new Claim("userId", user.Id),
             new Claim("email", user.Email),
             new Claim("displayName", user.DisplayName),
+            new Claim("role", user.Role ?? "user"),
             new Claim("deviceId", deviceId),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString())
@@ -94,6 +95,7 @@ public class JwtService : IJwtService, IDisposable
             new Claim("userId", user.Id),
             new Claim("email", user.Email),
             new Claim("displayName", user.DisplayName),
+            new Claim("role", user.Role ?? "user"),
             new Claim("deviceId", deviceId),
             new Claim("tokenType", "refresh"),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
