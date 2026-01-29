@@ -18,3 +18,6 @@ export type {
   PresenceActions,
   UserPresence,
 } from './usePresenceStore';
+
+export { useThemeStore } from './useThemeStore';
+export type { ThemeStore, ThemeState, ThemeActions, Theme } from './useThemeStore';
