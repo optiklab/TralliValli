@@ -51,7 +51,7 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -61,7 +61,7 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
     }
 
     const content = message.content || message.encryptedContent;
-    
+
     // Check if message has attachments (file message)
     if (message.attachments && message.attachments.length > 0) {
       return (
@@ -132,24 +132,20 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
           {/* Message content */}
           <div
             className={`rounded-lg px-4 py-2 ${
-              isOwnMessage
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-900'
+              isOwnMessage ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-900'
             }`}
           >
             {renderMessageContent()}
           </div>
 
           {/* Timestamp and read receipts */}
-          <div className={`flex items-center mt-1 space-x-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+          <div
+            className={`flex items-center mt-1 space-x-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+          >
             <span className="text-xs text-gray-500">{formatTimestamp(message.createdAt)}</span>
-            {message.editedAt && (
-              <span className="text-xs text-gray-500 italic">(edited)</span>
-            )}
+            {message.editedAt && <span className="text-xs text-gray-500 italic">(edited)</span>}
             {isOwnMessage && getReadByCount() > 0 && (
-              <span className="text-xs text-gray-500">
-                ✓✓ {getReadByCount()}
-              </span>
+              <span className="text-xs text-gray-500">✓✓ {getReadByCount()}</span>
             )}
           </div>
 
@@ -176,15 +172,28 @@ function TypingIndicator({ users }: { users: Array<{ userId: string; userName: s
     users.length === 1
       ? `${users[0].userName} is typing...`
       : users.length === 2
-      ? `${users[0].userName} and ${users[1].userName} are typing...`
-      : `${users[0].userName} and ${users.length - 1} others are typing...`;
+        ? `${users[0].userName} and ${users[1].userName} are typing...`
+        : `${users[0].userName} and ${users.length - 1} others are typing...`;
 
   return (
-    <div className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500" role="status" aria-live="polite">
+    <div
+      className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-500"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex space-x-1" aria-hidden="true">
-        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span
+          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: '0ms' }}
+        />
+        <span
+          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: '150ms' }}
+        />
+        <span
+          className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+          style={{ animationDelay: '300ms' }}
+        />
       </div>
       <span>{displayText}</span>
     </div>
@@ -216,11 +225,11 @@ export function MessageThread({
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     const hasNewMessages = messages.length > previousMessageCountRef.current;
-    
+
     if (hasNewMessages && shouldAutoScroll) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-    
+
     previousMessageCountRef.current = messages.length;
   }, [messages, shouldAutoScroll]);
 
@@ -230,7 +239,7 @@ export function MessageThread({
 
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    
+
     // Enable auto-scroll if within 100px of bottom
     setShouldAutoScroll(distanceFromBottom < 100);
 
@@ -238,19 +247,21 @@ export function MessageThread({
     if (scrollTop === 0 && hasMore && !isLoadingMore && onLoadMore) {
       setIsLoadingMore(true);
       const oldScrollHeight = scrollHeight;
-      
-      onLoadMore().then(() => {
-        setIsLoadingMore(false);
-        // Maintain scroll position after loading
-        if (scrollContainerRef.current) {
-          const newScrollHeight = scrollContainerRef.current.scrollHeight;
-          scrollContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight;
-        }
-      }).catch((error) => {
-        setIsLoadingMore(false);
-        console.error('Failed to load more messages:', error);
-        // TODO: Show error notification to user
-      });
+
+      onLoadMore()
+        .then(() => {
+          setIsLoadingMore(false);
+          // Maintain scroll position after loading
+          if (scrollContainerRef.current) {
+            const newScrollHeight = scrollContainerRef.current.scrollHeight;
+            scrollContainerRef.current.scrollTop = newScrollHeight - oldScrollHeight;
+          }
+        })
+        .catch((error) => {
+          setIsLoadingMore(false);
+          console.error('Failed to load more messages:', error);
+          // TODO: Show error notification to user
+        });
     }
   }, [hasMore, isLoadingMore, onLoadMore]);
 
@@ -269,7 +280,8 @@ export function MessageThread({
     return currentMessage.senderId !== previousMessage.senderId;
   };
 
-  const handleReply = (messageId: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleReply = (_messageId: string) => {
     // This would typically trigger a reply UI
     // TODO: Implement reply UI functionality
     // For now, this is a placeholder that will be implemented when message input component is added
@@ -286,11 +298,7 @@ export function MessageThread({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Messages container */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4"
-      >
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4">
         {/* Load more indicator */}
         {isLoadingMore && (
           <div className="flex justify-center py-4" aria-label="Loading more messages">

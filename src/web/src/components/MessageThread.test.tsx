@@ -60,7 +60,7 @@ describe('MessageThread', () => {
     // Reset stores
     useConversationStore.getState().reset();
     useAuthStore.setState({ user: mockUser, isAuthenticated: true });
-    
+
     // Clear mocks
     vi.clearAllMocks();
   });
@@ -198,7 +198,7 @@ describe('MessageThread', () => {
   describe('Message Sorting', () => {
     it('displays messages in chronological order', () => {
       const unorderedMessages = [mockMessages[2], mockMessages[0], mockMessages[1]];
-      
+
       useConversationStore.setState({
         messages: { 'conv-1': unorderedMessages },
       });
@@ -206,7 +206,7 @@ describe('MessageThread', () => {
       render(<MessageThread conversationId="conv-1" />);
 
       const messageContents = screen.getAllByText(/Hello there!|Hi! How are you?|I'm doing great/);
-      
+
       // First message should be "Hello there!"
       expect(messageContents[0]).toHaveTextContent('Hello there!');
       // Second should be "Hi! How are you?"
@@ -360,7 +360,7 @@ describe('MessageThread', () => {
       useConversationStore.setState({
         messages: { 'conv-1': [mockMessages[0]] },
       });
-      
+
       render(<MessageThread conversationId="conv-1" typingUsers={[]} />);
 
       expect(screen.queryByText(/typing/)).not.toBeInTheDocument();
@@ -374,7 +374,7 @@ describe('MessageThread', () => {
         messages: { 'conv-1': mockMessages },
       });
     });
-    
+
     it('shows load more indicator when hasMore is true', () => {
       render(<MessageThread conversationId="conv-1" hasMore={true} />);
 
@@ -389,18 +389,12 @@ describe('MessageThread', () => {
 
     it('calls onLoadMore when scrolling to top', async () => {
       const onLoadMore = vi.fn().mockResolvedValue(undefined);
-      
+
       useConversationStore.setState({
         messages: { 'conv-1': mockMessages },
       });
 
-      render(
-        <MessageThread
-          conversationId="conv-1"
-          hasMore={true}
-          onLoadMore={onLoadMore}
-        />
-      );
+      render(<MessageThread conversationId="conv-1" hasMore={true} onLoadMore={onLoadMore} />);
 
       const scrollContainer = document.querySelector('.overflow-y-auto');
       if (scrollContainer) {
@@ -408,7 +402,7 @@ describe('MessageThread', () => {
         Object.defineProperty(scrollContainer, 'scrollTop', { value: 0, writable: true });
         Object.defineProperty(scrollContainer, 'scrollHeight', { value: 1000, writable: true });
         Object.defineProperty(scrollContainer, 'clientHeight', { value: 500, writable: true });
-        
+
         fireEvent.scroll(scrollContainer);
 
         await waitFor(() => {
@@ -419,18 +413,12 @@ describe('MessageThread', () => {
 
     it('shows loading spinner while loading more messages', async () => {
       const onLoadMore = vi.fn(() => new Promise(() => {})); // Never resolves
-      
+
       useConversationStore.setState({
         messages: { 'conv-1': mockMessages },
       });
 
-      render(
-        <MessageThread
-          conversationId="conv-1"
-          hasMore={true}
-          onLoadMore={onLoadMore}
-        />
-      );
+      render(<MessageThread conversationId="conv-1" hasMore={true} onLoadMore={onLoadMore} />);
 
       const scrollContainer = document.querySelector('.overflow-y-auto');
       if (scrollContainer) {
@@ -438,7 +426,7 @@ describe('MessageThread', () => {
         Object.defineProperty(scrollContainer, 'scrollTop', { value: 0, writable: true });
         Object.defineProperty(scrollContainer, 'scrollHeight', { value: 1000, writable: true });
         Object.defineProperty(scrollContainer, 'clientHeight', { value: 500, writable: true });
-        
+
         fireEvent.scroll(scrollContainer);
 
         await waitFor(() => {
