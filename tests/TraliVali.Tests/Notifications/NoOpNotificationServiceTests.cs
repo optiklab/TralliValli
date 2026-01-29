@@ -51,14 +51,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendPushNotificationAsync_WithEmptyUserId_ShouldThrowArgumentNullException()
+    public async Task SendPushNotificationAsync_WithEmptyUserId_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendPushNotificationAsync("", "Title", "Body"));
     }
 
@@ -75,14 +75,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendPushNotificationAsync_WithEmptyTitle_ShouldThrowArgumentNullException()
+    public async Task SendPushNotificationAsync_WithEmptyTitle_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendPushNotificationAsync("user123", "", "Body"));
     }
 
@@ -99,14 +99,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendPushNotificationAsync_WithEmptyBody_ShouldThrowArgumentNullException()
+    public async Task SendPushNotificationAsync_WithEmptyBody_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendPushNotificationAsync("user123", "Title", ""));
     }
 
@@ -166,14 +166,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendBatchNotificationsAsync_WithEmptyUserIds_ShouldThrowArgumentNullException()
+    public async Task SendBatchNotificationsAsync_WithEmptyUserIds_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendBatchNotificationsAsync(Array.Empty<string>(), "Title", "Body"));
     }
 
@@ -190,14 +190,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendBatchNotificationsAsync_WithEmptyTitle_ShouldThrowArgumentNullException()
+    public async Task SendBatchNotificationsAsync_WithEmptyTitle_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendBatchNotificationsAsync(new[] { "user1", "user2" }, "", "Body"));
     }
 
@@ -214,14 +214,14 @@ public class NoOpNotificationServiceTests
     }
 
     [Fact]
-    public async Task SendBatchNotificationsAsync_WithEmptyBody_ShouldThrowArgumentNullException()
+    public async Task SendBatchNotificationsAsync_WithEmptyBody_ShouldThrowArgumentException()
     {
         // Arrange
         var logger = new Mock<ILogger<NoOpNotificationService>>().Object;
         var service = new NoOpNotificationService(logger);
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             service.SendBatchNotificationsAsync(new[] { "user1", "user2" }, "Title", ""));
     }
 

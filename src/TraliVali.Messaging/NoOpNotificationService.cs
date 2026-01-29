@@ -23,12 +23,18 @@ public class NoOpNotificationService : INotificationService
     /// <inheritdoc/>
     public Task SendPushNotificationAsync(string userId, string title, string body, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(userId))
+        if (userId == null)
             throw new ArgumentNullException(nameof(userId));
-        if (string.IsNullOrWhiteSpace(title))
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID cannot be empty or whitespace.", nameof(userId));
+        if (title == null)
             throw new ArgumentNullException(nameof(title));
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty or whitespace.", nameof(title));
+        if (body == null)
             throw new ArgumentNullException(nameof(body));
+        if (string.IsNullOrWhiteSpace(body))
+            throw new ArgumentException("Body cannot be empty or whitespace.", nameof(body));
 
         _logger.LogInformation(
             "Would send push notification to user {UserId}: Title='{Title}', Body='{Body}'",
@@ -40,12 +46,18 @@ public class NoOpNotificationService : INotificationService
     /// <inheritdoc/>
     public Task SendBatchNotificationsAsync(string[] userIds, string title, string body, CancellationToken cancellationToken = default)
     {
-        if (userIds == null || userIds.Length == 0)
+        if (userIds == null)
             throw new ArgumentNullException(nameof(userIds));
-        if (string.IsNullOrWhiteSpace(title))
+        if (userIds.Length == 0)
+            throw new ArgumentException("User IDs array cannot be empty.", nameof(userIds));
+        if (title == null)
             throw new ArgumentNullException(nameof(title));
-        if (string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty or whitespace.", nameof(title));
+        if (body == null)
             throw new ArgumentNullException(nameof(body));
+        if (string.IsNullOrWhiteSpace(body))
+            throw new ArgumentException("Body cannot be empty or whitespace.", nameof(body));
 
         _logger.LogInformation(
             "Would send batch notification to {UserCount} users: Title='{Title}', Body='{Body}', UserIds=[{UserIds}]",

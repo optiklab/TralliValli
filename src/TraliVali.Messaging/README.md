@@ -158,7 +158,8 @@ dotnet test --filter "FullyQualifiedName~TraliVali.Tests.Notifications"
 
 The service provides comprehensive error handling:
 - Validates all input parameters
-- Throws `ArgumentNullException` for null/empty required parameters
+- Throws `ArgumentNullException` for null required parameters
+- Throws `ArgumentException` for empty or whitespace-only strings
 - Logs all operations and errors using `ILogger`
 - Future implementations should throw `InvalidOperationException` for provider-specific errors
 
