@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { FileUploadService, fileUploadService } from './fileUpload';
 import { apiClient } from './api';
-import type {
-  PresignedUrlResponse,
-  FileMetadata,
-  UploadProgress,
-} from '@/types/api';
+import type { PresignedUrlResponse, FileMetadata, UploadProgress } from '@/types/api';
 
 // Mock the API client
 vi.mock('./api', () => ({
@@ -97,7 +93,7 @@ describe('FileUploadService', () => {
       getContext: vi.fn(() => ({
         drawImage: vi.fn(),
       })),
-      toBlob: vi.fn((callback, type, quality) => {
+      toBlob: vi.fn((callback) => {
         const blob = new Blob(['mock blob data'], { type: 'image/jpeg' });
         callback(blob);
       }),

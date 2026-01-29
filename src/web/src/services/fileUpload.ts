@@ -316,12 +316,7 @@ export class FileUploadService {
     }
 
     // Upload to presigned URL with progress tracking
-    await uploadToPresignedUrl(
-      presignedUrlResponse.uploadUrl,
-      fileToUpload,
-      onProgress,
-      signal
-    );
+    await uploadToPresignedUrl(presignedUrlResponse.uploadUrl, fileToUpload, onProgress, signal);
 
     // Get file metadata after successful upload
     const metadata = await apiClient.getFileMetadata(presignedUrlResponse.fileId);
