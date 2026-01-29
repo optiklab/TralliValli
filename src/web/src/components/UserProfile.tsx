@@ -27,6 +27,7 @@ export function UserProfile({ onLogout }: UserProfileProps) {
   const getInitials = (name: string) => {
     return name
       .split(' ')
+      .filter((part) => part.length > 0) // Filter out empty strings
       .map((part) => part[0])
       .join('')
       .toUpperCase()

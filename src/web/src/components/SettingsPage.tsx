@@ -15,8 +15,8 @@ export function SettingsPage({ onThemeChange }: SettingsPageProps) {
   const { theme, toggleTheme } = useThemeStore();
 
   const handleThemeToggle = () => {
-    toggleTheme();
     const newTheme = theme === 'light' ? 'dark' : 'light';
+    toggleTheme();
     onThemeChange?.(newTheme);
   };
 
