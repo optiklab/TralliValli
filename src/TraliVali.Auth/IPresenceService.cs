@@ -19,6 +19,10 @@ public interface IPresenceService
     /// <param name="userId">The ID of the user</param>
     /// <param name="connectionId">The SignalR connection ID to remove</param>
     /// <returns>A task representing the async operation</returns>
+    /// <remarks>
+    /// If the user has multiple active connections, removing one connection will keep them online.
+    /// The user is only marked as offline and their last-seen timestamp is recorded when their last connection is removed.
+    /// </remarks>
     Task SetOfflineAsync(string userId, string connectionId);
 
     /// <summary>

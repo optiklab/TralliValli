@@ -325,7 +325,7 @@ public class PresenceServiceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Constructor_ShouldThrowException_WhenRedisIsNull()
+    public void Constructor_ShouldThrowException_WhenRedisIsNull()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new PresenceService(null!));

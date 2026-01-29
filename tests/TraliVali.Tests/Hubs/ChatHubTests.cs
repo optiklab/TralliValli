@@ -304,6 +304,25 @@ public class ChatHubTests
     }
 
     [Fact]
+    public async Task OnDisconnectedAsync_ShouldNotBroadcast_WhenUserStillHasOtherConnections()
+    {
+        // Arrange - User still online with other connections
+        _mockPresenceService.Setup(s => s.SetOfflineAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        _mockPresenceService.Setup(s => s.GetLastSeenAsync(It.IsAny<string>()))
+            .ReturnsAsync((DateTime?)null); // Null indicates user is still online
+
+        // Act
+        await _chatHub.OnDisconnectedAsync(null);
+
+        // Assert
+        _mockPresenceService.Verify(s => s.SetOfflineAsync("user123", "connection123"), Times.Once);
+        _mockPresenceService.Verify(s => s.GetLastSeenAsync("user123"), Times.Once);
+        // Should NOT broadcast presence update when user is still online
+        _mockClient.Verify(c => c.PresenceUpdate(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime?>()), Times.Never);
+    }
+
+    [Fact]
     public void Constructor_ShouldThrowException_WhenLoggerIsNull()
     {
         // Arrange

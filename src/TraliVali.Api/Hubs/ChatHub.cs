@@ -187,14 +187,17 @@ public class ChatHub : Hub<IChatClient>
         _logger.LogInformation("User {UserId} disconnected from connection ID {ConnectionId}", 
             userId, Context.ConnectionId);
 
-        // Mark user as offline in presence service
+        // Mark user as offline in presence service (handles multi-connection)
         await _presenceService.SetOfflineAsync(userId, Context.ConnectionId);
 
-        // Get last-seen timestamp
+        // Get last-seen timestamp - will be null if user still has other connections
         var lastSeen = await _presenceService.GetLastSeenAsync(userId);
 
-        // Notify all clients about this user's offline status
-        await Clients.All.PresenceUpdate(userId, false, lastSeen);
+        // Only broadcast if user is truly offline (has a last-seen timestamp)
+        if (lastSeen.HasValue)
+        {
+            await Clients.All.PresenceUpdate(userId, false, lastSeen);
+        }
 
         await base.OnDisconnectedAsync(exception);
     }

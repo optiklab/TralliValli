@@ -56,25 +56,29 @@ public class PresenceService : IPresenceService
         var db = _redis.GetDatabase();
         var connectionsKey = $"{UserConnectionsPrefix}{userId}";
         
-        // Remove this specific connection
-        await db.SetRemoveAsync(connectionsKey, connectionId);
+        // Use Lua script for atomic remove-check-delete sequence to avoid race conditions
+        // This ensures that if multiple connections disconnect simultaneously, only one will
+        // mark the user as offline and set the last-seen timestamp
+        var script = @"
+            redis.call('SREM', KEYS[1], ARGV[1])
+            local remaining = redis.call('SCARD', KEYS[1])
+            if remaining == 0 then
+                redis.call('ZREM', KEYS[2], ARGV[2])
+                redis.call('SET', KEYS[3], ARGV[3])
+                redis.call('DEL', KEYS[1])
+                return 1
+            end
+            return 0
+        ";
         
-        // Check if user has any other active connections
-        var remainingConnections = await db.SetLengthAsync(connectionsKey);
+        var lastSeenKey = $"{LastSeenPrefix}{userId}";
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         
-        if (remainingConnections == 0)
-        {
-            // No more connections - mark user as offline
-            await db.SortedSetRemoveAsync(OnlineUsersKey, userId);
-            
-            // Store last-seen timestamp
-            var lastSeenKey = $"{LastSeenPrefix}{userId}";
-            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            await db.StringSetAsync(lastSeenKey, timestamp);
-            
-            // Clean up connections key
-            await db.KeyDeleteAsync(connectionsKey);
-        }
+        await db.ScriptEvaluateAsync(
+            script,
+            new RedisKey[] { connectionsKey, OnlineUsersKey, lastSeenKey },
+            new RedisValue[] { connectionId, userId, timestamp }
+        );
     }
 
     /// <inheritdoc/>
@@ -90,13 +94,25 @@ public class PresenceService : IPresenceService
 
         var db = _redis.GetDatabase();
         
-        // Check each user's presence in the sorted set
+        // Use pipelining to batch multiple Redis queries
+        var tasks = new List<Task<(string userId, double? score)>>();
+        
         foreach (var userId in userIds)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 continue;
                 
-            var score = await db.SortedSetScoreAsync(OnlineUsersKey, userId);
+            tasks.Add(Task.Run(async () =>
+            {
+                var score = await db.SortedSetScoreAsync(OnlineUsersKey, userId);
+                return (userId, score);
+            }));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        
+        foreach (var (userId, score) in results)
+        {
             result[userId] = score.HasValue;
         }
 
