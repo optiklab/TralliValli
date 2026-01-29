@@ -356,6 +356,44 @@ public class ArchiveServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExportConversationMessagesAsync_ShouldPreferPlainContentOverEncrypted()
+    {
+        // Arrange
+        var user1 = await CreateTestUserAsync("user1@test.com", "User One");
+        var user2 = await CreateTestUserAsync("user2@test.com", "User Two");
+        var conversation = await CreateTestConversationAsync("Test Conversation", new[] { user1.Id, user2.Id });
+
+        var baseTime = DateTime.UtcNow.AddDays(-5);
+        
+        // Message with both plain and encrypted content - plain should be preferred
+        var message = new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId = user1.Id,
+            Type = "text",
+            Content = "Plain readable text",
+            EncryptedContent = "encrypted_data_here",
+            CreatedAt = baseTime
+        };
+        await _mongoContext!.Messages.InsertOneAsync(message);
+
+        var startDate = baseTime.AddDays(-1);
+        var endDate = baseTime.AddDays(1);
+
+        // Act
+        var result = await _archiveService!.ExportConversationMessagesAsync(
+            conversation.Id,
+            startDate,
+            endDate);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Messages);
+        // Plain content should be preferred for readability in exports
+        Assert.Equal("Plain readable text", result.Messages[0].Content);
+    }
+
+    [Fact]
     public async Task ExportConversationMessagesAsync_ShouldIncludeExportMetadata()
     {
         // Arrange

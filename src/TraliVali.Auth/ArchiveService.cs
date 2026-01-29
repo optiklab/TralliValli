@@ -40,7 +40,7 @@ public class ArchiveService : IArchiveService
             throw new ArgumentException("Conversation ID is required", nameof(conversationId));
 
         if (startDate > endDate)
-            throw new ArgumentException("Start date must be before or equal to end date");
+            throw new ArgumentException($"Start date must be before or equal to end date (startDate: {startDate:O}, endDate: {endDate:O})");
 
         // Get conversation details
         var conversation = await _conversations
@@ -101,11 +101,12 @@ public class ArchiveService : IArchiveService
             {
                 var sender = userDictionary.TryGetValue(m.SenderId, out var s) ? s : null;
                 
-                // Decrypt message: if EncryptedContent exists, use it; otherwise use Content
-                // Note: Encryption is not yet fully implemented (Phase 5), so we use Content field for now
-                var decryptedContent = !string.IsNullOrWhiteSpace(m.EncryptedContent)
-                    ? m.EncryptedContent // In the future, this would be decrypted
-                    : m.Content;
+                // Decrypt message: For now, prefer plain Content over EncryptedContent
+                // Note: Full encryption/decryption will be implemented in Phase 5
+                // Until then, we export the readable Content field for usability
+                var decryptedContent = !string.IsNullOrWhiteSpace(m.Content)
+                    ? m.Content
+                    : m.EncryptedContent; // Fallback to encrypted if no plain content
 
                 return new ExportedMessage
                 {
