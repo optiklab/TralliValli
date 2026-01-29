@@ -104,7 +104,7 @@ public class MessagesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving messages for conversation {ConversationId}", conversationId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving messages.");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while retrieving messages." });
         }
     }
 
@@ -177,7 +177,7 @@ public class MessagesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error searching messages in conversation {ConversationId}", conversationId);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while searching messages.");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while searching messages." });
         }
     }
 
@@ -230,7 +230,7 @@ public class MessagesController : ControllerBase
             var deleted = await _messageRepository.SoftDeleteAsync(id, cancellationToken);
             if (!deleted)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to delete message.");
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to delete message." });
             }
 
             _logger.LogInformation("Message {MessageId} soft deleted by user {UserId}", id, userId);
@@ -239,7 +239,7 @@ public class MessagesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting message {MessageId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while deleting the message.");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An error occurred while deleting the message." });
         }
     }
 
@@ -274,14 +274,14 @@ public class MessagesController : ControllerBase
             EncryptedContent = message.EncryptedContent,
             ReplyTo = message.ReplyTo,
             CreatedAt = message.CreatedAt,
-            ReadBy = message.ReadBy.Select(r => new MessageReadStatusResponse
+            ReadBy = message.ReadBy?.Select(r => new MessageReadStatusResponse
             {
                 UserId = r.UserId,
                 ReadAt = r.ReadAt
-            }).ToList(),
+            }).ToList() ?? new List<MessageReadStatusResponse>(),
             EditedAt = message.EditedAt,
             IsDeleted = message.IsDeleted,
-            Attachments = message.Attachments
+            Attachments = message.Attachments ?? new List<string>()
         };
     }
 }

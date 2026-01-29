@@ -28,9 +28,12 @@ public class MessageRepository : MongoRepository<Message>, IMessageRepository
         int limit = 50,
         CancellationToken cancellationToken = default)
     {
-        // Build filter for conversation and cursor
+        // Build filter for conversation, cursor, and exclude soft-deleted messages
         var filterBuilder = Builders<Message>.Filter;
-        var filter = filterBuilder.Eq(m => m.ConversationId, conversationId);
+        var filter = filterBuilder.And(
+            filterBuilder.Eq(m => m.ConversationId, conversationId),
+            filterBuilder.Eq(m => m.IsDeleted, false)
+        );
 
         if (beforeCursor.HasValue)
         {
@@ -62,10 +65,10 @@ public class MessageRepository : MongoRepository<Message>, IMessageRepository
     {
         var filterBuilder = Builders<Message>.Filter;
 
-        // Build filter for conversation and text search
-        // MongoDB text search requires a text index on the content field
+        // Build filter for conversation, text search, and exclude soft-deleted messages
         var filter = filterBuilder.And(
             filterBuilder.Eq(m => m.ConversationId, conversationId),
+            filterBuilder.Eq(m => m.IsDeleted, false),
             filterBuilder.Text(searchQuery)
         );
 
