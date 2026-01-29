@@ -257,6 +257,25 @@ describe('ConversationList', () => {
 
       expect(screen.getByText('Message deleted')).toBeInTheDocument();
     });
+
+    it('displays encryptedContent when content is empty', () => {
+      useConversationStore.setState({
+        conversations: [mockConversations[0]],
+        messages: {
+          'conv-1': [
+            {
+              ...mockMessages['conv-1'][0],
+              content: '',
+              encryptedContent: 'encrypted-message-content',
+            },
+          ],
+        },
+      });
+
+      render(<ConversationList />);
+
+      expect(screen.getByText('encrypted-message-content')).toBeInTheDocument();
+    });
   });
 
   describe('Unread count badge', () => {

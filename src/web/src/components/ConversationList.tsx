@@ -72,7 +72,13 @@ export function ConversationList({ onConversationSelect }: ConversationListProps
       return 'No messages yet';
     }
 
-    const lastMessage = conversationMessages[conversationMessages.length - 1];
+    // Find the most recent message by createdAt timestamp
+    const lastMessage = conversationMessages.reduce((latest, current) => {
+      const latestTime = new Date(latest.createdAt).getTime();
+      const currentTime = new Date(current.createdAt).getTime();
+      return currentTime > latestTime ? current : latest;
+    });
+
     if (lastMessage.isDeleted) {
       return 'Message deleted';
     }
