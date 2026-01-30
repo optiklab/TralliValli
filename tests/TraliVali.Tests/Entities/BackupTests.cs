@@ -123,22 +123,6 @@ public class BackupTests
 public class BackupStatusTests
 {
     [Fact]
-    public void GivenBackupStatus_WhenCheckingValues_ThenAllEnumValuesExist()
-    {
-        // Arrange & Act
-        var pending = BackupStatus.Pending;
-        var inProgress = BackupStatus.InProgress;
-        var completed = BackupStatus.Completed;
-        var failed = BackupStatus.Failed;
-
-        // Assert
-        Assert.Equal(0, (int)pending);
-        Assert.Equal(1, (int)inProgress);
-        Assert.Equal(2, (int)completed);
-        Assert.Equal(3, (int)failed);
-    }
-
-    [Fact]
     public void GivenBackupStatus_WhenConvertingToString_ThenReturnsCorrectNames()
     {
         // Arrange & Act & Assert

@@ -97,9 +97,6 @@ public class DeviceTests
         var device = new Device();
 
         // Assert
-        Assert.NotNull(device.DeviceId);
-        Assert.NotNull(device.DeviceName);
-        Assert.NotNull(device.DeviceType);
         Assert.Equal(string.Empty, device.DeviceId);
         Assert.Equal(string.Empty, device.DeviceName);
         Assert.Equal(string.Empty, device.DeviceType);
@@ -220,8 +217,6 @@ public class ParticipantTests
         var participant = new Participant();
 
         // Assert
-        Assert.NotNull(participant.UserId);
-        Assert.NotNull(participant.Role);
         Assert.Equal(string.Empty, participant.UserId);
         Assert.Equal("member", participant.Role);
     }
@@ -296,27 +291,27 @@ public class MessageReadStatusTests
         var readStatus = new MessageReadStatus();
 
         // Assert
-        Assert.NotNull(readStatus.UserId);
         Assert.Equal(string.Empty, readStatus.UserId);
     }
 
     [Fact]
-    public void GivenMultipleMessageReadStatuses_WhenCreatedAtDifferentTimes_ThenReadAtTimesAreDifferent()
+    public void GivenMultipleMessageReadStatuses_WhenCreatedWithDifferentTimestamps_ThenReadAtTimesAreDifferent()
     {
         // Arrange
+        var pastDate = DateTime.UtcNow.AddMinutes(-10);
+        var currentDate = DateTime.UtcNow;
+
+        // Act
         var readStatus1 = new MessageReadStatus
         {
             UserId = "507f1f77bcf86cd799439011",
-            ReadAt = DateTime.UtcNow.AddMinutes(-10)
+            ReadAt = pastDate
         };
-
-        // Act
-        System.Threading.Thread.Sleep(10); // Small delay to ensure different timestamps
 
         var readStatus2 = new MessageReadStatus
         {
             UserId = "507f1f77bcf86cd799439022",
-            ReadAt = DateTime.UtcNow
+            ReadAt = currentDate
         };
 
         // Assert
