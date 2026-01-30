@@ -6,6 +6,57 @@ import { test, expect } from './fixtures';
  * Tests the complete user registration flow using an invite link
  */
 
+/**
+ * Helper to mock successful invite validation
+ */
+async function mockValidInvite(page: any) {
+  await page.route('**/auth/invite/**', async (route: any) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isValid: true,
+        message: 'Invite is valid.',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    });
+  });
+}
+
+/**
+ * Helper to mock invalid invite validation
+ */
+async function mockInvalidInvite(page: any) {
+  await page.route('**/auth/invite/**', async (route: any) => {
+    await route.fulfill({
+      status: 404,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isValid: false,
+        message: 'Invalid or expired invite token.',
+      }),
+    });
+  });
+}
+
+/**
+ * Helper to mock successful registration
+ */
+async function mockSuccessfulRegistration(page: any) {
+  await page.route('**/auth/register', async (route: any) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        refreshExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    });
+  });
+}
+
 test.describe('Registration via Invite Link', () => {
   test('should successfully register a new user with valid invite link', async ({
     page,
@@ -14,32 +65,9 @@ test.describe('Registration via Invite Link', () => {
     // Generate a test invite token (in real scenario, this would come from admin API)
     const inviteToken = 'test-invite-token-' + Date.now();
 
-    // Mock the invite validation API to return success
-    await page.route('**/auth/invite/**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          isValid: true,
-          message: 'Invite is valid.',
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }),
-      });
-    });
-
-    // Mock the registration API to return success
-    await page.route('**/auth/register', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          accessToken: 'mock-access-token',
-          refreshToken: 'mock-refresh-token',
-          expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          refreshExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        }),
-      });
-    });
+    // Mock the invite validation and registration APIs
+    await mockValidInvite(page);
+    await mockSuccessfulRegistration(page);
 
     // Navigate to registration page with invite token
     await page.goto(`/register?invite=${inviteToken}`);
@@ -68,13 +96,11 @@ test.describe('Registration via Invite Link', () => {
     );
 
     // Submit registration form
-    await page.click('button[type="submit"]');
+    const submitButton = page.locator('button[type="submit"]');
+    await submitButton.click();
 
-    // Wait for success - the app should process the registration
-    // Since we mocked the API, we should check for successful state changes
-    // The component calls onSuccess or navigates, but since we don't have routing,
-    // we can check if the error is not shown and form is submitted
-    await page.waitForTimeout(1000);
+    // Wait for registration request to complete
+    await page.waitForResponse('**/auth/register', { timeout: 5000 });
 
     // Verify no error message is shown
     const errorElement = page.locator('text=/error|failed/i').first();
@@ -86,22 +112,13 @@ test.describe('Registration via Invite Link', () => {
     const invalidToken = 'invalid-token-xyz';
 
     // Mock the invite validation API to return failure
-    await page.route('**/auth/invite/**', async (route) => {
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          isValid: false,
-          message: 'Invalid or expired invite token.',
-        }),
-      });
-    });
+    await mockInvalidInvite(page);
 
     // Navigate to registration page with invalid token
     await page.goto(`/register?invite=${invalidToken}`);
 
-    // Wait for invite validation to complete
-    await page.waitForTimeout(1000);
+    // Wait for validation response
+    await page.waitForResponse('**/auth/invite/**', { timeout: 5000 });
 
     // Check if error message is displayed (use first() to handle multiple matches)
     await expect(page.locator('text=/invalid|expired/i').first()).toBeVisible({ timeout: 5000 });
@@ -115,22 +132,12 @@ test.describe('Registration via Invite Link', () => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
     // Mock the invite validation API to return success
-    await page.route('**/auth/invite/**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          isValid: true,
-          message: 'Invite is valid.',
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }),
-      });
-    });
+    await mockValidInvite(page);
 
-    // Mock the registration API - it should NOT be called for invalid email
-    let registrationCalled = false;
-    await page.route('**/auth/register', async (route) => {
-      registrationCalled = true;
+    // Mock the registration API - track if it gets called
+    let registrationAttempts = 0;
+    await page.route('**/auth/register', async (route: any) => {
+      registrationAttempts++;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -160,32 +167,24 @@ test.describe('Registration via Invite Link', () => {
     // Submit form
     await page.click('button[type="submit"]');
 
-    // Wait a moment for potential submission
-    await page.waitForTimeout(1000);
-
     // The email input should show HTML5 validation error or the form should show a custom error
     // Check if registration API was not called (form validation prevented submission)
-    expect(registrationCalled).toBe(false);
+    // Wait for potential API call with a small timeout, expect it to timeout
+    const registrationRequest = page.waitForRequest('**/auth/register', { timeout: 2000 });
+    await expect(registrationRequest).rejects.toThrow();
     
     // The email input should still be visible (not navigated away)
     await expect(emailInput).toBeVisible();
+    
+    // Verify registration was not attempted
+    expect(registrationAttempts).toBe(0);
   });
 
   test('should require display name during registration', async ({ page, testUser }) => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
     // Mock the invite validation API to return success
-    await page.route('**/auth/invite/**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          isValid: true,
-          message: 'Invite is valid.',
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        }),
-      });
-    });
+    await mockValidInvite(page);
 
     await page.goto(`/register?invite=${inviteToken}`);
 

@@ -6,6 +6,7 @@
  */
 
 import { useState, type FormEvent, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '@services/index';
 import { useAuthStore } from '@stores/useAuthStore';
 import { isValidEmail, INVITE_VALIDATION_DEBOUNCE_MS } from '@utils/validation';
@@ -22,8 +23,8 @@ export function RegisterPage({
   onError,
 }: RegisterPageProps) {
   // Read invite token from URL query parameter if not provided via props
-  const urlParams = new URLSearchParams(window.location.search);
-  const inviteFromUrl = urlParams.get('invite');
+  const [searchParams] = useSearchParams();
+  const inviteFromUrl = searchParams.get('invite');
   
   const [inviteToken, setInviteToken] = useState(initialInviteToken || inviteFromUrl || '');
   const [email, setEmail] = useState('');
