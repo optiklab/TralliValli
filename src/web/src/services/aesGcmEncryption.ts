@@ -25,8 +25,8 @@ export interface EncryptionResult {
  */
 export interface EncryptedData {
   iv: string; // Base64 encoded IV
-  ciphertext: string; // Base64 encoded ciphertext + tag
-  tag: string; // Base64 encoded authentication tag (redundant but explicit)
+  ciphertext: string; // Base64 encoded ciphertext (without tag)
+  tag: string; // Base64 encoded authentication tag
 }
 
 // Constants for AES-GCM
@@ -50,11 +50,11 @@ function generateIV(): Uint8Array {
  */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  let binary = '';
+  const chars: string[] = [];
   for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    chars.push(String.fromCharCode(bytes[i]));
   }
-  return btoa(binary);
+  return btoa(chars.join(''));
 }
 
 /**
@@ -90,6 +90,14 @@ export async function encrypt(
   plaintext: string | Uint8Array
 ): Promise<EncryptionResult> {
   try {
+    // Validate key
+    if (!key || key.type !== 'secret' || key.algorithm.name !== 'AES-GCM') {
+      throw new Error('Invalid key: must be an AES-GCM secret key');
+    }
+    if (!key.usages.includes('encrypt')) {
+      throw new Error('Invalid key: must have encrypt usage');
+    }
+
     // Convert string to Uint8Array if needed
     const plaintextBytes =
       typeof plaintext === 'string' ? new TextEncoder().encode(plaintext) : plaintext;
@@ -157,6 +165,24 @@ export async function decrypt(
   tag?: Uint8Array
 ): Promise<Uint8Array> {
   try {
+    // Validate key
+    if (!key || key.type !== 'secret' || key.algorithm.name !== 'AES-GCM') {
+      throw new Error('Invalid key: must be an AES-GCM secret key');
+    }
+    if (!key.usages.includes('decrypt')) {
+      throw new Error('Invalid key: must have decrypt usage');
+    }
+
+    // Validate IV length
+    if (iv.length !== IV_LENGTH) {
+      throw new Error(`Invalid IV length: expected ${IV_LENGTH} bytes, got ${iv.length}`);
+    }
+
+    // Validate tag length if provided
+    if (tag && tag.length !== TAG_LENGTH / 8) {
+      throw new Error(`Invalid tag length: expected ${TAG_LENGTH / 8} bytes, got ${tag.length}`);
+    }
+
     // Combine ciphertext and tag for GCM decryption
     // Web Crypto API expects them together
     let ciphertextWithTag: Uint8Array;
