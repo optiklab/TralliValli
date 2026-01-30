@@ -16,6 +16,7 @@ import type {
   UploadProgress,
   FileMetadata,
 } from '@/types/api';
+import { FileEncryptionService, type EncryptedFileMetadata } from './fileEncryption';
 
 // ============================================================================
 // Constants
@@ -36,6 +37,7 @@ export interface UploadOptions {
   file: File;
   onProgress?: (progress: UploadProgress) => void;
   signal?: AbortSignal;
+  encryptionService?: FileEncryptionService;
 }
 
 export interface UploadResult {
@@ -43,6 +45,7 @@ export interface UploadResult {
   blobPath: string;
   thumbnailDataUrl?: string;
   metadata: FileMetadata;
+  encryptionMetadata?: EncryptedFileMetadata;
 }
 
 // ============================================================================
@@ -279,7 +282,7 @@ export class FileUploadService {
    * Upload a file with progress tracking and optional compression
    */
   async uploadFile(options: UploadOptions): Promise<UploadResult> {
-    const { conversationId, file, onProgress, signal } = options;
+    const { conversationId, file, onProgress, signal, encryptionService } = options;
 
     // Validate file
     if (!file || file.size === 0) {
@@ -327,12 +330,38 @@ export class FileUploadService {
       }
     }
 
+    // Encrypt file if encryption service is provided
+    let encryptionMetadata: EncryptedFileMetadata | undefined;
+    let finalFileToUpload: File | Blob = fileToUpload;
+
+    if (encryptionService) {
+      const encryptResult = await encryptionService.encryptFile(
+        conversationId,
+        fileToUpload,
+        (progress) => {
+          // Report encryption progress as part of overall upload (first 20% of progress)
+          onProgress?.({
+            loaded: progress.processed,
+            total: progress.total * 5, // Total work is 5x encryption (20% encryption, 80% upload)
+            percentage: Math.round((progress.percentage * 20) / 100),
+          });
+        }
+      );
+
+      if (!encryptResult.success) {
+        throw new Error(encryptResult.error || 'Failed to encrypt file');
+      }
+
+      finalFileToUpload = encryptResult.encryptedBlob;
+      encryptionMetadata = encryptResult.metadata;
+    }
+
     // Get presigned URL from API
     const presignedUrlRequest: PresignedUrlRequest = {
       conversationId,
       fileName: file.name,
-      fileSize: fileToUpload.size,
-      mimeType: fileToUpload.type,
+      fileSize: finalFileToUpload.size,
+      mimeType: encryptionService ? 'application/octet-stream' : fileToUpload.type,
     };
 
     const presignedUrlResponse: PresignedUrlResponse =
@@ -344,7 +373,24 @@ export class FileUploadService {
     }
 
     // Upload to presigned URL with progress tracking
-    await uploadToPresignedUrl(presignedUrlResponse.uploadUrl, fileToUpload, onProgress, signal);
+    await uploadToPresignedUrl(
+      presignedUrlResponse.uploadUrl,
+      finalFileToUpload,
+      (progress) => {
+        // If encrypted, adjust progress to account for encryption step (20-100%)
+        if (encryptionService) {
+          const uploadTotalWork = progress.total * 5; // Total work is 5x upload
+          onProgress?.({
+            loaded: progress.loaded,
+            total: uploadTotalWork,
+            percentage: 20 + Math.round((progress.percentage * 80) / 100),
+          });
+        } else {
+          onProgress?.(progress);
+        }
+      },
+      signal
+    );
 
     // Get file metadata after successful upload
     const metadata = await apiClient.getFileMetadata(presignedUrlResponse.fileId);
@@ -354,6 +400,7 @@ export class FileUploadService {
       blobPath: presignedUrlResponse.blobPath,
       thumbnailDataUrl,
       metadata,
+      encryptionMetadata,
     };
   }
 }

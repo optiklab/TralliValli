@@ -10,22 +10,50 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { FileMetadata } from '@/types/api';
+import type { EncryptedFileMetadata } from '@/services';
 import { formatFileSize } from '@/utils/fileUtils';
+import { useFileDownload } from '@/hooks/useFileDownload';
 
 export interface FileAttachmentProps {
   file: FileMetadata;
   thumbnail?: string;
   fullImageUrl?: string; // URL for full-size image in lightbox
   onDownload?: (file: FileMetadata) => void;
+  encryptionMetadata?: EncryptedFileMetadata;
 }
 
-export function FileAttachment({ file, thumbnail, fullImageUrl, onDownload }: FileAttachmentProps) {
+export function FileAttachment({
+  file,
+  thumbnail,
+  fullImageUrl,
+  onDownload,
+  encryptionMetadata,
+}: FileAttachmentProps) {
   const [imageError, setImageError] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const lightboxRef = useRef<HTMLDivElement>(null);
+  const { downloadFile, isDownloading } = useFileDownload();
 
-  const handleDownload = () => {
-    onDownload?.(file);
+  const handleDownload = async () => {
+    // Clear previous errors
+    setDownloadError(null);
+
+    // If custom onDownload handler is provided, use it
+    if (onDownload) {
+      onDownload(file);
+      return;
+    }
+
+    // Otherwise, use the built-in download with decryption support
+    try {
+      await downloadFile(file.id, file.conversationId, encryptionMetadata);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to download file';
+      setDownloadError(errorMessage);
+      console.error('Failed to download file:', error);
+    }
   };
 
   const handleThumbnailClick = () => {
@@ -116,11 +144,19 @@ export function FileAttachment({ file, thumbnail, fullImageUrl, onDownload }: Fi
           </p>
           <p className="text-xs text-gray-500 mt-0.5">{formatFileSize(file.size)}</p>
 
+          {/* Download Error */}
+          {downloadError && (
+            <p className="text-xs text-red-600 mt-1" role="alert">
+              {downloadError}
+            </p>
+          )}
+
           {/* Download Button */}
           <button
             type="button"
             onClick={handleDownload}
-            className="mt-2 inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800"
+            disabled={isDownloading}
+            className="mt-2 inline-flex items-center text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -130,7 +166,7 @@ export function FileAttachment({ file, thumbnail, fullImageUrl, onDownload }: Fi
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
               />
             </svg>
-            Download
+            {isDownloading ? 'Downloading...' : 'Download'}
           </button>
         </div>
       </div>
