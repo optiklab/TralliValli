@@ -62,10 +62,12 @@ export function MessageComposer({
   const [message, setMessage] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const dragCounterRef = useRef(0);
 
   // Reset state when conversation changes
   // Note: Setting state in useEffect is intentional here - we want to reset
@@ -77,6 +79,8 @@ export function MessageComposer({
     setAttachedFiles([]);
 
     setShowEmojiPicker(false);
+    setIsDragging(false);
+    dragCounterRef.current = 0;
   }, [conversationId]);
 
   // Debounced typing indicator
@@ -262,8 +266,72 @@ export function MessageComposer({
     return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
   };
 
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...files]);
+    }
+  };
+
   return (
-    <div className="border-t border-gray-200 bg-white p-4">
+    <div
+      className="border-t border-gray-200 bg-white p-4 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Drag and Drop Overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-10 bg-indigo-50 bg-opacity-95 border-2 border-dashed border-indigo-400 rounded-lg flex items-center justify-center">
+          <div className="text-center">
+            <svg
+              className="w-16 h-16 text-indigo-500 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="text-lg font-semibold text-indigo-700">Drop files here to attach</p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         {/* Reply Preview */}
         {replyTo && (

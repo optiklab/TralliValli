@@ -16,12 +16,12 @@
  * - Password never sent to server, only encrypted backup
  */
 
+import { openDB } from 'idb';
+import type { IDBPDatabase } from 'idb';
 import { KeyManagementService } from './keyManagement';
 import { CryptoKeyExchange } from './cryptoKeyExchange';
 import type { StoredConversationKey } from './keyManagement';
 import type { StoredKeyPair } from './cryptoKeyExchange';
-import { openDB } from 'idb';
-import type { IDBPDatabase } from 'idb';
 
 /**
  * Structure of the encrypted backup blob

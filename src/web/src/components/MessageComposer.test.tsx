@@ -560,20 +560,14 @@ describe('MessageComposer', () => {
 
       const user = userEvent.setup();
       render(
-        <MessageComposer
-          {...defaultProps}
-          encryptionService={mockEncryptionService as any}
-        />
+        <MessageComposer {...defaultProps} encryptionService={mockEncryptionService as any} />
       );
 
       const textarea = screen.getByPlaceholderText('Type a message...');
       await user.type(textarea, 'Secret message{Enter}');
 
       // Verify encryption was called
-      expect(mockEncryptionService.encryptMessage).toHaveBeenCalledWith(
-        'conv-1',
-        'Secret message'
-      );
+      expect(mockEncryptionService.encryptMessage).toHaveBeenCalledWith('conv-1', 'Secret message');
 
       // Verify onSendMessage was called with both plaintext and encrypted content
       expect(mockOnSendMessage).toHaveBeenCalledWith(
@@ -611,10 +605,7 @@ describe('MessageComposer', () => {
 
       const user = userEvent.setup();
       render(
-        <MessageComposer
-          {...defaultProps}
-          encryptionService={mockEncryptionService as any}
-        />
+        <MessageComposer {...defaultProps} encryptionService={mockEncryptionService as any} />
       );
 
       const textarea = screen.getByPlaceholderText('Type a message...');
@@ -630,6 +621,101 @@ describe('MessageComposer', () => {
         undefined,
         undefined
       );
+    });
+  });
+
+  describe('Drag and Drop', () => {
+    it('shows drag overlay when dragging files over the component', () => {
+      render(<MessageComposer {...defaultProps} />);
+
+      const composer = screen
+        .getByPlaceholderText('Type a message...')
+        .closest('div')?.parentElement;
+      expect(composer).toBeInTheDocument();
+
+      // Simulate drag enter with proper dataTransfer
+      fireEvent.dragEnter(composer!, {
+        dataTransfer: {
+          items: [{ kind: 'file', type: 'image/png' }],
+        },
+      });
+
+      // Drag overlay should appear
+      expect(screen.getByText('Drop files here to attach')).toBeInTheDocument();
+    });
+
+    it('hides drag overlay when drag leaves', () => {
+      render(<MessageComposer {...defaultProps} />);
+
+      const composer = screen
+        .getByPlaceholderText('Type a message...')
+        .closest('div')?.parentElement;
+
+      // Simulate drag enter
+      fireEvent.dragEnter(composer!, {
+        dataTransfer: {
+          items: [{ kind: 'file', type: 'image/png' }],
+        },
+      });
+
+      // Overlay should be visible
+      expect(screen.getByText('Drop files here to attach')).toBeInTheDocument();
+
+      // Simulate drag leave
+      fireEvent.dragLeave(composer!, {
+        dataTransfer: {
+          items: [{ kind: 'file', type: 'image/png' }],
+        },
+      });
+
+      // Overlay should be hidden
+      expect(screen.queryByText('Drop files here to attach')).not.toBeInTheDocument();
+    });
+
+    it('attaches files when dropped', async () => {
+      render(<MessageComposer {...defaultProps} />);
+
+      const composer = screen
+        .getByPlaceholderText('Type a message...')
+        .closest('div')?.parentElement;
+
+      const file = new File(['test'], 'test.png', { type: 'image/png' });
+
+      // Simulate drop event with files
+      fireEvent.drop(composer!, {
+        dataTransfer: {
+          files: [file],
+        },
+      });
+
+      // File should be attached
+      await waitFor(() => {
+        expect(screen.getByText('test.png')).toBeInTheDocument();
+      });
+    });
+
+    it('attaches multiple files when dropped', async () => {
+      render(<MessageComposer {...defaultProps} />);
+
+      const composer = screen
+        .getByPlaceholderText('Type a message...')
+        .closest('div')?.parentElement;
+
+      const file1 = new File(['test1'], 'test1.png', { type: 'image/png' });
+      const file2 = new File(['test2'], 'test2.jpg', { type: 'image/jpeg' });
+
+      // Simulate drop event with multiple files
+      fireEvent.drop(composer!, {
+        dataTransfer: {
+          files: [file1, file2],
+        },
+      });
+
+      // Both files should be attached
+      await waitFor(() => {
+        expect(screen.getByText('test1.png')).toBeInTheDocument();
+        expect(screen.getByText('test2.jpg')).toBeInTheDocument();
+      });
     });
   });
 });

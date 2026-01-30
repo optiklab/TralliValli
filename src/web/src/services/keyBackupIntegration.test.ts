@@ -21,9 +21,8 @@ describe('KeyBackupIntegrationService', () => {
     await cryptoKeyExchange.initialize();
 
     // Set up master key
-    const { masterKey } = await keyManagementService.deriveMasterKeyFromPassword(
-      testMasterPassword
-    );
+    const { masterKey } =
+      await keyManagementService.deriveMasterKeyFromPassword(testMasterPassword);
     await keyManagementService.setMasterKey(masterKey);
 
     // Create mock API client

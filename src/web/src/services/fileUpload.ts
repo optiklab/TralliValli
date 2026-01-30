@@ -22,9 +22,10 @@ import type {
 // ============================================================================
 
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
+const MAX_IMAGE_DIMENSION = 2048; // Max width or height in pixels
 const THUMBNAIL_MAX_WIDTH = 200;
 const THUMBNAIL_MAX_HEIGHT = 200;
-const COMPRESSION_QUALITY = 0.85;
+const COMPRESSION_QUALITY = 0.8; // 80% quality
 
 // ============================================================================
 // Types
@@ -56,14 +57,32 @@ function isImage(file: File): boolean {
 }
 
 /**
- * Compress an image file to meet the max size requirement
+ * Check if an image needs compression based on dimensions
  */
-async function compressImage(file: File): Promise<File> {
-  // If already under max size, return as-is
-  if (file.size <= MAX_IMAGE_SIZE_BYTES) {
-    return file;
+async function needsCompression(file: File): Promise<boolean> {
+  if (!isImage(file)) {
+    return false;
   }
 
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve(img.width > MAX_IMAGE_DIMENSION || img.height > MAX_IMAGE_DIMENSION);
+      };
+      img.onerror = () => resolve(false);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(false);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Compress an image file to meet the max size and dimension requirements
+ */
+async function compressImage(file: File): Promise<File> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -74,10 +93,16 @@ async function compressImage(file: File): Promise<File> {
         const canvas = document.createElement('canvas');
         let { width, height } = img;
 
-        // Calculate compression ratio based on file size
-        const ratio = Math.sqrt(MAX_IMAGE_SIZE_BYTES / file.size);
-        width = Math.floor(width * ratio);
-        height = Math.floor(height * ratio);
+        // Scale down to max dimension if needed
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+          if (width > height) {
+            height = Math.floor((height * MAX_IMAGE_DIMENSION) / width);
+            width = MAX_IMAGE_DIMENSION;
+          } else {
+            width = Math.floor((width * MAX_IMAGE_DIMENSION) / height);
+            height = MAX_IMAGE_DIMENSION;
+          }
+        }
 
         canvas.width = width;
         canvas.height = height;
@@ -90,33 +115,23 @@ async function compressImage(file: File): Promise<File> {
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Try compression with multiple quality levels
-        const tryCompress = (quality: number, attempt: number = 1): void => {
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error('Failed to compress image'));
-                return;
-              }
+        // Convert to blob with compression
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to compress image'));
+              return;
+            }
 
-              // If within size limit or we've tried enough times, resolve
-              if (blob.size <= MAX_IMAGE_SIZE_BYTES || attempt >= 3) {
-                const compressedFile = new File([blob], file.name, {
-                  type: file.type,
-                  lastModified: Date.now(),
-                });
-                resolve(compressedFile);
-              } else {
-                // Try again with lower quality
-                tryCompress(Math.max(0.5, quality - 0.2), attempt + 1);
-              }
-            },
-            file.type,
-            quality
-          );
-        };
-
-        tryCompress(COMPRESSION_QUALITY);
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          },
+          file.type,
+          COMPRESSION_QUALITY
+        );
       };
 
       img.onerror = () => {
@@ -282,13 +297,18 @@ export class FileUploadService {
     // Compress image if needed
     if (isImage(file)) {
       try {
-        fileToUpload = await compressImage(file);
+        // Only compress if dimensions exceed max
+        const shouldCompress = await needsCompression(file);
+        if (shouldCompress) {
+          fileToUpload = await compressImage(file);
+        }
+        
         thumbnailDataUrl = await generateThumbnail(fileToUpload);
 
-        // Validate compressed size
+        // Validate file size (even if dimensions don't require compression, size might still be too large)
         if (fileToUpload.size > MAX_IMAGE_SIZE_BYTES) {
           throw new Error(
-            `Image is too large after compression (${(fileToUpload.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB.`
+            `Image is too large (${(fileToUpload.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB. Try reducing image quality or dimensions.`
           );
         }
       } catch (error) {
