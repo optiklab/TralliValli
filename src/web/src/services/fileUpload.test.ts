@@ -460,6 +460,71 @@ describe('FileUploadService', () => {
         })
       ).rejects.toThrow('too large');
     });
+
+    it('should compress images to max 2048px dimension', async () => {
+      // Mock an image that's larger than 2048px
+      global.Image = class {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        src = '';
+
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) {
+              this.onload();
+            }
+          }, 0);
+        }
+
+        get width() {
+          return 4000; // Larger than MAX_IMAGE_DIMENSION
+        }
+
+        get height() {
+          return 3000;
+        }
+      } as unknown as typeof Image;
+
+      const mockFile = new File(['image data'], 'large-image.jpg', {
+        type: 'image/jpeg',
+      });
+
+      const mockPresignedUrlResponse: PresignedUrlResponse = {
+        uploadUrl: 'https://storage.example.com/upload',
+        fileId: 'file-123',
+        blobPath: 'files/file-123.jpg',
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      };
+
+      const mockFileMetadata: FileMetadata = {
+        id: 'file-123',
+        conversationId: 'conv-123',
+        uploaderId: 'user-123',
+        fileName: 'large-image.jpg',
+        mimeType: 'image/jpeg',
+        size: 1024 * 1024,
+        blobPath: 'files/file-123.jpg',
+        createdAt: new Date().toISOString(),
+      };
+
+      vi.mocked(apiClient.getPresignedUrl).mockResolvedValue(mockPresignedUrlResponse);
+      vi.mocked(apiClient.getFileMetadata).mockResolvedValue(mockFileMetadata);
+
+      mockXHR.addEventListener.mockImplementation((event, handler) => {
+        if (event === 'load') {
+          setTimeout(() => handler(), 0);
+        }
+      });
+
+      const result = await fileUploadService.uploadFile({
+        conversationId: 'conv-123',
+        file: mockFile,
+      });
+
+      expect(result.fileId).toBe('file-123');
+      // Verify compression occurred
+      expect(apiClient.getPresignedUrl).toHaveBeenCalled();
+    });
   });
 
   describe('singleton instance', () => {

@@ -21,9 +21,8 @@ describe('KeyBackupService', () => {
     backupService = new KeyBackupService(keyManagementService, cryptoKeyExchange);
 
     // Set up master key for key management service
-    const { masterKey } = await keyManagementService.deriveMasterKeyFromPassword(
-      testMasterPassword
-    );
+    const { masterKey } =
+      await keyManagementService.deriveMasterKeyFromPassword(testMasterPassword);
     await keyManagementService.setMasterKey(masterKey);
   });
 

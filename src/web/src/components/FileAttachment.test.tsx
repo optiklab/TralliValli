@@ -62,17 +62,17 @@ describe('FileAttachment Component', () => {
     expect(onDownload).toHaveBeenCalledWith(mockFile);
   });
 
-  it('should call onDownload when thumbnail is clicked', async () => {
-    const onDownload = vi.fn();
+  it('should open lightbox when thumbnail is clicked', async () => {
     const user = userEvent.setup();
     const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
 
-    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} onDownload={onDownload} />);
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
 
     const img = screen.getByAltText('image.jpg');
     await user.click(img);
 
-    expect(onDownload).toHaveBeenCalledWith(mockImageFile);
+    // Should open lightbox instead of downloading
+    expect(screen.getByRole('dialog', { name: 'Image lightbox' })).toBeInTheDocument();
   });
 
   it('should format file sizes correctly', () => {
@@ -133,5 +133,106 @@ describe('FileAttachment Component', () => {
 
     const fileName = screen.getByTitle('document.pdf');
     expect(fileName).toBeInTheDocument();
+  });
+
+  it('should open lightbox when image thumbnail is clicked', async () => {
+    const user = userEvent.setup();
+    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
+
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
+
+    const img = screen.getByAltText('image.jpg');
+    await user.click(img);
+
+    // Lightbox should be visible
+    expect(screen.getByRole('dialog', { name: 'Image lightbox' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Close lightbox')).toBeInTheDocument();
+  });
+
+  it('should close lightbox when close button is clicked', async () => {
+    const user = userEvent.setup();
+    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
+
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
+
+    // Open lightbox
+    const img = screen.getByAltText('image.jpg');
+    await user.click(img);
+
+    // Close lightbox
+    const closeButton = screen.getByLabelText('Close lightbox');
+    await user.click(closeButton);
+
+    // Lightbox should be closed
+    expect(screen.queryByRole('dialog', { name: 'Image lightbox' })).not.toBeInTheDocument();
+  });
+
+  it('should close lightbox when ESC key is pressed', async () => {
+    const user = userEvent.setup();
+    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
+
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
+
+    // Open lightbox
+    const img = screen.getByAltText('image.jpg');
+    await user.click(img);
+
+    // Press ESC key
+    await user.keyboard('{Escape}');
+
+    // Lightbox should be closed
+    expect(screen.queryByRole('dialog', { name: 'Image lightbox' })).not.toBeInTheDocument();
+  });
+
+  it('should close lightbox when clicking on backdrop', async () => {
+    const user = userEvent.setup();
+    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
+
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
+
+    // Open lightbox
+    const img = screen.getByAltText('image.jpg');
+    await user.click(img);
+
+    // Click on backdrop
+    const backdrop = screen.getByRole('dialog', { name: 'Image lightbox' });
+    await user.click(backdrop);
+
+    // Lightbox should be closed
+    expect(screen.queryByRole('dialog', { name: 'Image lightbox' })).not.toBeInTheDocument();
+  });
+
+  it('should allow downloading from lightbox', async () => {
+    const onDownload = vi.fn();
+    const user = userEvent.setup();
+    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
+
+    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} onDownload={onDownload} />);
+
+    // Open lightbox
+    const img = screen.getByAltText('image.jpg');
+    await user.click(img);
+
+    // Find and click download button in lightbox (there are 2 download buttons now)
+    const downloadButtons = screen.getAllByText('Download');
+    const lightboxDownloadButton = downloadButtons[1]; // Second one is in lightbox
+    await user.click(lightboxDownloadButton);
+
+    expect(onDownload).toHaveBeenCalledWith(mockImageFile);
+  });
+
+  it('should not open lightbox for non-image files', async () => {
+    const user = userEvent.setup();
+
+    render(<FileAttachment file={mockFile} />);
+
+    // Click on file icon area - should not open lightbox
+    const fileIcon = screen.getByText('Download').closest('div')?.previousSibling;
+    if (fileIcon) {
+      await user.click(fileIcon as HTMLElement);
+    }
+
+    // Lightbox should not appear
+    expect(screen.queryByRole('dialog', { name: 'Image lightbox' })).not.toBeInTheDocument();
   });
 });
