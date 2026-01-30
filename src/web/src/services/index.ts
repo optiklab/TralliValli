@@ -43,3 +43,10 @@ export {
   type EncryptionResult,
   type EncryptedData,
 } from './aesGcmEncryption';
+
+export {
+  KeyManagementService,
+  type StoredConversationKey,
+  type KeyRotationRecord,
+  type ConversationKeyInfo,
+} from './keyManagement';

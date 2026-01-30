@@ -617,3 +617,56 @@ export function useConversations() {
 ## License
 
 Part of the TralliValli project.
+
+---
+
+# Key Management Service
+
+A comprehensive key management service for per-conversation encryption with secure storage and rotation capabilities.
+
+## Features
+
+- **Per-conversation Key Derivation**: Derive unique encryption keys from shared secrets
+- **HKDF-based Key Derivation**: Industry-standard key derivation (HKDF-SHA256)
+- **Encrypted Storage**: Store conversation keys encrypted at rest in IndexedDB
+- **Master Key Protection**: Conversation keys encrypted with user's master key
+- **Key Rotation**: Full support for key rotation when group membership changes
+- **Rotation History**: Audit trail of all key rotations
+- **PBKDF2 Password Derivation**: Secure master key derivation from passwords
+
+## Quick Start
+
+```typescript
+import { KeyManagementService } from '@/services';
+
+// 1. Initialize service
+const keyService = new KeyManagementService();
+await keyService.initialize();
+
+// 2. Set up master key
+const { masterKey, salt } = await keyService.deriveMasterKeyFromPassword('user-password');
+await keyService.setMasterKey(masterKey);
+
+// 3. Derive conversation key from shared secret (X25519)
+const sharedSecret = new Uint8Array(32); // From X25519 key exchange
+const conversationKey = await keyService.deriveConversationKey(
+  sharedSecret,
+  'conversation-123'
+);
+
+// 4. Store the key (encrypted at rest)
+await keyService.storeConversationKey('conversation-123', conversationKey);
+
+// 5. Retrieve the key later
+const key = await keyService.getConversationKey('conversation-123');
+```
+
+## Documentation
+
+Complete implementation guide: `/TASK40_COMPLETE.md`
+
+Comprehensive test suite with 37 tests - all passing ✅
+
+## License
+
+Part of the TralliValli project.
