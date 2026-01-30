@@ -493,8 +493,8 @@ Configure application settings in Container App.
    openssl rsa -in private.pem -outform PEM -pubout -out public.pem
    
    # Read keys (include BEGIN/END lines)
-   JWT_PRIVATE_KEY=$(cat private.pem | awk '{printf "%s\\n", $0}' | sed '$s/\\n$//')
-   JWT_PUBLIC_KEY=$(cat public.pem | awk '{printf "%s\\n", $0}' | sed '$s/\\n$//')
+   JWT_PRIVATE_KEY=$(cat private.pem | awk 'BEGIN{ORS="\\n"} {print}' | sed 's/\\n$//')
+   JWT_PUBLIC_KEY=$(cat public.pem | awk 'BEGIN{ORS="\\n"} {print}' | sed 's/\\n$//')
    
    # Generate invite signing key
    INVITE_SIGNING_KEY=$(openssl rand -base64 32)
@@ -965,6 +965,7 @@ We'll use Caddy for automatic SSL with Let's Encrypt.
 Same process as Azure deployment (see Step 10 in Azure section), but connect to MongoDB locally:
 
 ```bash
+# Replace YOUR_STRONG_MONGO_PASSWORD_HERE with the password from your .env.prod file
 docker exec -it tralivali-mongodb mongosh \
   -u admin \
   -p YOUR_STRONG_MONGO_PASSWORD_HERE \
@@ -1229,12 +1230,12 @@ BACKUP_CONTAINER_NAME=tralivali-backups
 **MongoDB Backup:**
 
 ```bash
-# Azure (using mongodump)
+# Azure (using mongodump - requires MongoDB Database Tools)
 mongosh "$MONGODB_CONNECTION" --eval "use admin; db.runCommand({dbStats: 1})"
-# Then use mongodump (install MongoDB Database Tools)
+# Then use mongodump
 mongodump --uri="$MONGODB_CONNECTION" --out=./backups/$(date +%Y%m%d)
 
-# Docker Compose
+# Docker Compose (replace YOUR_STRONG_MONGO_PASSWORD_HERE with your actual password from .env.prod)
 docker exec tralivali-mongodb mongodump \
   -u admin -p YOUR_STRONG_MONGO_PASSWORD_HERE \
   --authenticationDatabase admin \
@@ -1284,8 +1285,8 @@ chmod +x /opt/tralivali-backup.sh
 # Edit crontab
 crontab -e
 
-# Add this line (runs daily at 2 AM):
-# 0 2 * * * /opt/tralivali-backup.sh >> /var/log/tralivali-backup.log 2>&1
+# Add this line to run daily at 2 AM:
+0 2 * * * /opt/tralivali-backup.sh >> /var/log/tralivali-backup.log 2>&1
 ```
 
 ### Certificate Renewal
@@ -1472,9 +1473,9 @@ az container show \
   --name $MONGO_CONTAINER \
   --query instanceView.state
 
-# Docker Compose
+# Docker Compose (replace PASSWORD with your MongoDB password from .env.prod)
 docker exec tralivali-mongodb mongosh \
-  -u admin -p PASSWORD \
+  -u admin -p YOUR_STRONG_MONGO_PASSWORD_HERE \
   --authenticationDatabase admin \
   --eval "db.serverStatus()"
 ```
@@ -1779,5 +1780,5 @@ You have successfully deployed TraliVali! 🎉
 ---
 
 **Document Version:** 1.0  
-**Last Updated:** 2024-01-30  
+**Last Updated:** 2026-01-30  
 **Maintained By:** TraliVali Development Team
