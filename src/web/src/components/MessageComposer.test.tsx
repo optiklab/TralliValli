@@ -73,7 +73,7 @@ describe('MessageComposer', () => {
       await user.type(textarea, 'Test message');
       await user.keyboard('{Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined, undefined);
     });
 
     it('adds newline on Shift+Enter', async () => {
@@ -114,7 +114,7 @@ describe('MessageComposer', () => {
       const textarea = screen.getByPlaceholderText('Type a message...');
       await user.type(textarea, '  Test message  {Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined, undefined);
     });
   });
 
@@ -129,7 +129,7 @@ describe('MessageComposer', () => {
       const sendButton = screen.getByLabelText('Send message');
       await user.click(sendButton);
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined, undefined);
     });
 
     it('is disabled when no message and no files', () => {
@@ -247,6 +247,7 @@ describe('MessageComposer', () => {
 
       expect(mockOnSendMessage).toHaveBeenCalledWith(
         'Message with file',
+        undefined,
         expect.arrayContaining([expect.objectContaining({ name: 'test.txt' })]),
         undefined
       );
@@ -270,6 +271,7 @@ describe('MessageComposer', () => {
 
       expect(mockOnSendMessage).toHaveBeenCalledWith(
         '',
+        undefined,
         expect.arrayContaining([expect.objectContaining({ name: 'test.txt' })]),
         undefined
       );
@@ -388,7 +390,7 @@ describe('MessageComposer', () => {
       const textarea = screen.getByPlaceholderText('Type a message...');
       await user.type(textarea, 'Reply message{Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Reply message', undefined, 'msg-1');
+      expect(mockOnSendMessage).toHaveBeenCalledWith('Reply message', undefined, undefined, 'msg-1');
     });
 
     it('does not show reply preview when not replying', () => {
