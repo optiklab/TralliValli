@@ -164,6 +164,7 @@ try
     builder.Services.AddScoped<IRepository<Conversation>, ConversationRepository>();
     builder.Services.AddScoped<IRepository<Invite>, InviteRepository>();
     builder.Services.AddScoped<IRepository<UserKeyBackup>, UserKeyBackupRepository>();
+    builder.Services.AddScoped<IRepository<TraliVali.Domain.Entities.File>, FileRepository>();
     builder.Services.AddScoped<IMessageRepository, MessageRepository>();
     
     // Register MongoDB collections for direct access
