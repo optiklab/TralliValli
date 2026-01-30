@@ -86,7 +86,7 @@ describe('MediaGallery Component', () => {
     it('should render empty state when no files are available', () => {
       render(<MediaGallery files={[]} />);
 
-      expect(screen.getByText(/No all files/)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /No files/ })).toBeInTheDocument();
       expect(screen.getByText(/No files have been shared/)).toBeInTheDocument();
     });
   });
@@ -150,7 +150,7 @@ describe('MediaGallery Component', () => {
 
       await user.click(screen.getByRole('tab', { name: /Documents/ }));
 
-      expect(screen.getByText(/No documents files/)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /No documents/ })).toBeInTheDocument();
     });
   });
 

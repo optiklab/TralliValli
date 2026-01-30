@@ -8,7 +8,7 @@
  * - Infinite scroll for pagination
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { FileMetadata } from '@/types/api';
 import { formatFileSize } from '@/utils/fileUtils';
 
@@ -199,6 +199,12 @@ export function MediaGallery({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement>(null);
+  const isLoadingMoreRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isLoadingMoreRef.current = isLoadingMore;
+  }, [isLoadingMore]);
 
   // Filter files based on selected type
   const filteredFiles = files.filter((file) => {
@@ -210,12 +216,12 @@ export function MediaGallery({
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
-    if (!hasMore || !onLoadMore || isLoadingMore || loading) return;
+    if (!hasMore || !onLoadMore || loading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        if (target.isIntersecting && !isLoadingMore) {
+        if (target.isIntersecting && !isLoadingMoreRef.current) {
           setIsLoadingMore(true);
           onLoadMore()
             .then(() => {
@@ -240,21 +246,7 @@ export function MediaGallery({
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, onLoadMore, isLoadingMore, loading]);
-
-  const handleFileClick = useCallback(
-    (file: FileMetadata) => {
-      onFileClick?.(file);
-    },
-    [onFileClick]
-  );
-
-  const handleDownload = useCallback(
-    (file: FileMetadata) => {
-      onDownload?.(file);
-    },
-    [onDownload]
-  );
+  }, [hasMore, onLoadMore, loading]);
 
   const getFilterLabel = (filterType: FileFilter): string => {
     switch (filterType) {
@@ -336,11 +328,13 @@ export function MediaGallery({
                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No {filter} files</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">
+              No {filter === 'all' ? 'files' : filter === 'images' ? 'images' : 'documents'}
+            </h3>
             <p className="text-sm text-gray-500">
               {filter === 'all'
                 ? 'No files have been shared in this conversation yet.'
-                : `No ${filter} have been shared in this conversation yet.`}
+                : `No ${filter === 'images' ? 'images' : 'documents'} have been shared in this conversation yet.`}
             </p>
           </div>
         )}
@@ -356,8 +350,8 @@ export function MediaGallery({
                 <MediaItem
                   file={file}
                   thumbnailUrl={getThumbnailUrl?.(file)}
-                  onFileClick={handleFileClick}
-                  onDownload={handleDownload}
+                  onFileClick={onFileClick}
+                  onDownload={onDownload}
                 />
               </div>
             ))}
