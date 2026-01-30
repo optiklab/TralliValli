@@ -162,4 +162,55 @@ public class UserValidationTests
         Assert.Contains("PasswordHash is required", errors);
         Assert.Contains("PublicKey is required", errors);
     }
+
+    [Fact]
+    public void GivenEmailWithSpaces_WhenValidating_ThenReturnsEmailFormatInvalidError()
+    {
+        // Arrange
+        var user = new User
+        {
+            Email = "test @example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Act
+        var errors = user.Validate();
+
+        // Assert
+        Assert.Contains("Email format is invalid", errors);
+    }
+
+    [Fact]
+    public void GivenDefaultUserRole_WhenCreated_ThenRoleIsUser()
+    {
+        // Arrange & Act
+        var user = new User
+        {
+            Email = "test@example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Assert
+        Assert.Equal("user", user.Role);
+    }
+
+    [Fact]
+    public void GivenDefaultIsActive_WhenCreated_ThenIsActiveIsTrue()
+    {
+        // Arrange & Act
+        var user = new User
+        {
+            Email = "test@example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Assert
+        Assert.True(user.IsActive);
+    }
 }

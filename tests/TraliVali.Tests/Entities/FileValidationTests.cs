@@ -174,4 +174,45 @@ public class FileValidationTests
         // Assert
         Assert.Contains("BlobPath is required", errors);
     }
+
+    [Fact]
+    public void GivenDeletedFile_WhenIsDeletedIsTrue_ThenIsDeletedPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var file = new TraliVali.Domain.Entities.File
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            UploaderId = "507f1f77bcf86cd799439012",
+            FileName = "test.txt",
+            MimeType = "text/plain",
+            Size = 1024,
+            BlobPath = "/storage/files/test.txt",
+            IsDeleted = true
+        };
+
+        // Assert
+        Assert.True(file.IsDeleted);
+    }
+
+    [Fact]
+    public void GivenFileWithThumbnail_WhenThumbnailPathSet_ThenThumbnailPathIsCorrect()
+    {
+        // Arrange
+        var thumbnailPath = "/storage/thumbnails/test_thumb.jpg";
+
+        // Act
+        var file = new TraliVali.Domain.Entities.File
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            UploaderId = "507f1f77bcf86cd799439012",
+            FileName = "photo.jpg",
+            MimeType = "image/jpeg",
+            Size = 2048000,
+            BlobPath = "/storage/files/photo.jpg",
+            ThumbnailPath = thumbnailPath
+        };
+
+        // Assert
+        Assert.Equal(thumbnailPath, file.ThumbnailPath);
+    }
 }

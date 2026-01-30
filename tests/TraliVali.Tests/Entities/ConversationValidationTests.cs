@@ -106,4 +106,43 @@ public class ConversationValidationTests
         // Assert
         Assert.Empty(errors);
     }
+
+    [Fact]
+    public void GivenGroupConversation_WhenIsGroupIsTrue_ThenIsGroupPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var conversation = new Conversation
+        {
+            Type = "group",
+            Name = "My Group",
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = "507f1f77bcf86cd799439011" },
+                new Participant { UserId = "507f1f77bcf86cd799439022" }
+            },
+            IsGroup = true
+        };
+
+        // Assert
+        Assert.True(conversation.IsGroup);
+        Assert.Equal("My Group", conversation.Name);
+    }
+
+    [Fact]
+    public void GivenDirectConversation_WhenIsGroupIsFalse_ThenIsGroupPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var conversation = new Conversation
+        {
+            Type = "direct",
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = "507f1f77bcf86cd799439011" }
+            },
+            IsGroup = false
+        };
+
+        // Assert
+        Assert.False(conversation.IsGroup);
+    }
 }

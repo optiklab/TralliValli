@@ -121,4 +121,41 @@ public class MessageValidationTests
         // Assert
         Assert.Contains("Either Content or EncryptedContent is required", errors);
     }
+
+    [Fact]
+    public void GivenDeletedMessage_WhenIsDeletedIsTrue_ThenIsDeletedPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var message = new Message
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            SenderId = "507f1f77bcf86cd799439012",
+            Type = "text",
+            Content = "Hello",
+            IsDeleted = true
+        };
+
+        // Assert
+        Assert.True(message.IsDeleted);
+    }
+
+    [Fact]
+    public void GivenMessageWithReplyTo_WhenReplyToSet_ThenReplyToPropertyIsCorrect()
+    {
+        // Arrange
+        var replyToId = "507f1f77bcf86cd799439033";
+
+        // Act
+        var message = new Message
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            SenderId = "507f1f77bcf86cd799439012",
+            Type = "text",
+            Content = "Hello",
+            ReplyTo = replyToId
+        };
+
+        // Assert
+        Assert.Equal(replyToId, message.ReplyTo);
+    }
 }
