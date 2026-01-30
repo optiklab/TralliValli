@@ -15,7 +15,7 @@ test.describe('Registration via Invite Link', () => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
     // Mock the invite validation API to return success
-    await page.route('**/api/auth/invite/**', async (route) => {
+    await page.route('**/auth/invite/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -28,7 +28,7 @@ test.describe('Registration via Invite Link', () => {
     });
 
     // Mock the registration API to return success
-    await page.route('**/api/auth/register', async (route) => {
+    await page.route('**/auth/register', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -86,7 +86,7 @@ test.describe('Registration via Invite Link', () => {
     const invalidToken = 'invalid-token-xyz';
 
     // Mock the invite validation API to return failure
-    await page.route('**/api/auth/invite/**', async (route) => {
+    await page.route('**/auth/invite/**', async (route) => {
       await route.fulfill({
         status: 404,
         contentType: 'application/json',
@@ -146,7 +146,7 @@ test.describe('Registration via Invite Link', () => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
     // Mock the invite validation API to return success
-    await page.route('**/api/auth/invite/**', async (route) => {
+    await page.route('**/auth/invite/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -184,7 +184,7 @@ test.describe('Registration via Invite Link', () => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
     // Mock the invite validation API to return success
-    await page.route('**/api/auth/invite/**', async (route) => {
+    await page.route('**/auth/invite/**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
