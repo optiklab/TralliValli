@@ -63,6 +63,11 @@ public class MongoDbContext
     public IMongoCollection<ArchivalStats> ArchivalStats => _database.GetCollection<ArchivalStats>("archivalStats");
 
     /// <summary>
+    /// Gets the user key backups collection
+    /// </summary>
+    public IMongoCollection<UserKeyBackup> UserKeyBackups => _database.GetCollection<UserKeyBackup>("userKeyBackups");
+
+    /// <summary>
     /// Gets the MongoDB database instance
     /// </summary>
     public IMongoDatabase Database => _database;
@@ -128,6 +133,18 @@ public class MongoDbContext
             var inviteTtlIndex = Builders<Invite>.IndexKeys.Ascending(i => i.ExpiresAt);
             await Invites.Indexes.CreateOneAsync(
                 new CreateIndexModel<Invite>(inviteTtlIndex, new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
+
+        try
+        {
+            // UserKeyBackups: userId (unique)
+            var userKeyBackupIndex = Builders<UserKeyBackup>.IndexKeys.Ascending(b => b.UserId);
+            await UserKeyBackups.Indexes.CreateOneAsync(
+                new CreateIndexModel<UserKeyBackup>(userKeyBackupIndex, new CreateIndexOptions { Unique = true }));
         }
         catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
         {
