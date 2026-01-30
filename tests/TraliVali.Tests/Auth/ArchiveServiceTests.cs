@@ -24,10 +24,13 @@ public class ArchiveServiceTests : IAsyncLifetime
         _mongoContext = new MongoDbContext(connectionString, "test_tralivali");
         await _mongoContext.CreateIndexesAsync();
 
+        var encryptionService = new MessageEncryptionService();
         _archiveService = new ArchiveService(
             _mongoContext.Conversations,
             _mongoContext.Messages,
-            _mongoContext.Users);
+            _mongoContext.Users,
+            _mongoContext.ConversationKeys,
+            encryptionService);
     }
 
     public async Task DisposeAsync()
@@ -42,25 +45,53 @@ public class ArchiveServiceTests : IAsyncLifetime
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenConversationsIsNull()
     {
-        // Arrange & Act & Assert
+        // Arrange
+        var encryptionService = new MessageEncryptionService();
+        
+        // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ArchiveService(null!, _mongoContext!.Messages, _mongoContext.Users));
+            new ArchiveService(null!, _mongoContext!.Messages, _mongoContext.Users, _mongoContext.ConversationKeys, encryptionService));
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenMessagesIsNull()
     {
-        // Arrange & Act & Assert
+        // Arrange
+        var encryptionService = new MessageEncryptionService();
+        
+        // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ArchiveService(_mongoContext!.Conversations, null!, _mongoContext.Users));
+            new ArchiveService(_mongoContext!.Conversations, null!, _mongoContext.Users, _mongoContext.ConversationKeys, encryptionService));
     }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenUsersIsNull()
     {
+        // Arrange
+        var encryptionService = new MessageEncryptionService();
+        
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new ArchiveService(_mongoContext!.Conversations, _mongoContext.Messages, null!, _mongoContext.ConversationKeys, encryptionService));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentNullException_WhenConversationKeysIsNull()
+    {
+        // Arrange
+        var encryptionService = new MessageEncryptionService();
+        
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() =>
+            new ArchiveService(_mongoContext!.Conversations, _mongoContext.Messages, _mongoContext.Users, null!, encryptionService));
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentNullException_WhenEncryptionServiceIsNull()
+    {
         // Arrange & Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            new ArchiveService(_mongoContext!.Conversations, _mongoContext.Messages, null!));
+            new ArchiveService(_mongoContext!.Conversations, _mongoContext.Messages, _mongoContext.Users, _mongoContext.ConversationKeys, null!));
     }
 
     [Fact]

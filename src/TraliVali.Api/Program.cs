@@ -179,10 +179,17 @@ try
     });
     
     // Register ArchiveService as scoped for thread-safe MongoDB access
+    builder.Services.AddScoped<IMessageEncryptionService, MessageEncryptionService>();
     builder.Services.AddScoped<IArchiveService>(sp =>
     {
         var dbContext = sp.GetRequiredService<MongoDbContext>();
-        return new ArchiveService(dbContext.Conversations, dbContext.Messages, dbContext.Users);
+        var encryptionService = sp.GetRequiredService<IMessageEncryptionService>();
+        return new ArchiveService(
+            dbContext.Conversations, 
+            dbContext.Messages, 
+            dbContext.Users,
+            dbContext.ConversationKeys,
+            encryptionService);
     });
 
     // Register BackupService

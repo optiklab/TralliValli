@@ -68,6 +68,11 @@ public class MongoDbContext
     public IMongoCollection<UserKeyBackup> UserKeyBackups => _database.GetCollection<UserKeyBackup>("userKeyBackups");
 
     /// <summary>
+    /// Gets the conversation keys collection
+    /// </summary>
+    public IMongoCollection<ConversationKey> ConversationKeys => _database.GetCollection<ConversationKey>("conversationKeys");
+
+    /// <summary>
     /// Gets the MongoDB database instance
     /// </summary>
     public IMongoDatabase Database => _database;
@@ -145,6 +150,18 @@ public class MongoDbContext
             var userKeyBackupIndex = Builders<UserKeyBackup>.IndexKeys.Ascending(b => b.UserId);
             await UserKeyBackups.Indexes.CreateOneAsync(
                 new CreateIndexModel<UserKeyBackup>(userKeyBackupIndex, new CreateIndexOptions { Unique = true }));
+        }
+        catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
+        {
+            // Index already exists, ignore
+        }
+
+        try
+        {
+            // ConversationKeys: conversationId (unique)
+            var conversationKeyIndex = Builders<ConversationKey>.IndexKeys.Ascending(k => k.ConversationId);
+            await ConversationKeys.Indexes.CreateOneAsync(
+                new CreateIndexModel<ConversationKey>(conversationKeyIndex, new CreateIndexOptions { Unique = true }));
         }
         catch (MongoCommandException ex) when (ex.CodeName == "IndexOptionsConflict" || ex.CodeName == "IndexKeySpecsConflict")
         {
