@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "appName": {
+      "value": "tralivali"
+    },
+    "mongoRootUsername": {
+      "value": "admin"
+    },
+    "mongoRootPassword": {
+      "value": "CHANGE_THIS_PASSWORD_OR_USE_KEY_VAULT"
+    },
+    "enableLifecyclePolicies": {
+      "value": true
+    },
+    "apiMinReplicas": {
+      "value": 2
+    },
+    "apiMaxReplicas": {
+      "value": 10
+    },
+    "mongoCpu": {
+      "value": "2.0"
+    },
+    "mongoMemory": {
+      "value": "4.0"
+    },
+    "containerRegistrySku": {
+      "value": "Standard"
+    },
+    "logAnalyticsRetentionDays": {
+      "value": 90
+    },
+    "communicationServicesDataLocation": {
+      "value": "United States"
+    }
+  }
+}
