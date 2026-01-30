@@ -14,6 +14,7 @@ export { SettingsPage } from './SettingsPage';
 export { InviteModal } from './InviteModal';
 export { FileUpload } from './FileUpload';
 export { FileAttachment } from './FileAttachment';
+export { MediaGallery } from './MediaGallery';
 
 export type { LoginPageProps } from './LoginPage';
 export type { MagicLinkSentProps } from './MagicLinkSent';
@@ -28,3 +29,4 @@ export type { SettingsPageProps } from './SettingsPage';
 export type { InviteModalProps } from './InviteModal';
 export type { FileUploadProps } from './FileUpload';
 export type { FileAttachmentProps } from './FileAttachment';
+export type { MediaGalleryProps } from './MediaGallery';

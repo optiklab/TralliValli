@@ -302,7 +302,7 @@ export class FileUploadService {
         if (shouldCompress) {
           fileToUpload = await compressImage(file);
         }
-        
+
         thumbnailDataUrl = await generateThumbnail(fileToUpload);
 
         // Validate file size (even if dimensions don't require compression, size might still be too large)
