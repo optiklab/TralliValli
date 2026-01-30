@@ -100,46 +100,15 @@ test.describe('Registration via Invite Link', () => {
     // Navigate to registration page with invalid token
     await page.goto(`/register?invite=${invalidToken}`);
 
-    // Wait for invite validation to complete (will fail for invalid token)
-    // The inputs may remain disabled, so we need to check for the error message instead
-    await page.waitForTimeout(1000); // Wait for validation attempt
+    // Wait for invite validation to complete
+    await page.waitForTimeout(1000);
 
-    // For invalid invite, the inputs will be disabled, so we can't fill them
-    // Instead, we should check if an error message is shown
-    // However, based on the component logic, we need the validation to complete first
-    // Let's wait for either the error message or a timeout
-    const errorVisible = await page
-      .locator('text=/invalid|expired/i')
-      .isVisible()
-      .catch(() => false);
-
-    if (!errorVisible) {
-      // If no error shown yet (inputs might be disabled), try to interact with the form
-      // to trigger validation errors
-      const emailInput = page.locator('input[name="email"], input[type="email"]');
-      const isEnabled = await emailInput.isEnabled().catch(() => false);
-
-      if (!isEnabled) {
-        // Inputs are disabled due to invalid invite
-        // Check if error message is displayed
-        await expect(page.locator('text=/invalid|expired/i')).toBeVisible({ timeout: 5000 });
-      } else {
-        // If inputs are enabled (shouldn't happen with invalid invite), fill and submit
-        await page.fill('input[name="email"], input[type="email"]', testUser.email);
-        await page.fill(
-          'input[name="displayName"], input[placeholder*="name" i]',
-          testUser.displayName
-        );
-
-        // Submit form
-        await page.click('button[type="submit"]');
-
-        // Should show error message
-        await expect(page.locator('text=/invalid|expired|error/i')).toBeVisible({
-          timeout: 10000,
-        });
-      }
-    }
+    // Check if error message is displayed (use first() to handle multiple matches)
+    await expect(page.locator('text=/invalid|expired/i').first()).toBeVisible({ timeout: 5000 });
+    
+    // Verify that the email input is disabled due to invalid invite
+    const emailInput = page.locator('input[name="email"], input[type="email"]');
+    await expect(emailInput).toBeDisabled();
   });
 
   test('should validate email format during registration', async ({ page, testUser }) => {
@@ -175,8 +144,8 @@ test.describe('Registration via Invite Link', () => {
     // Submit form
     await page.click('button[type="submit"]');
 
-    // Should show validation error
-    const errorMessage = page.locator('text=/invalid.*email|email.*format|valid email/i');
+    // Should show validation error - the component shows "Please enter a valid email address"
+    const errorMessage = page.locator('text=/valid email address/i');
     await expect(errorMessage).toBeVisible({ timeout: 5000 });
   });
 
