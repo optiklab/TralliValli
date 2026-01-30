@@ -1,0 +1,22 @@
+# Production environment files (contain secrets)
+.env.prod
+
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+
+# Backup files
+backups/
+*.tar.gz
+*.sql
+*.dump
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*~

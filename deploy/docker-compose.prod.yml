@@ -1,0 +1,187 @@
+services:
+  # Reverse Proxy - Only service with exposed ports
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: tralivali-nginx-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # Uncomment when SSL certificates are configured
+      # - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Uncomment for SSL certificates
+      # - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - tralivali-prod-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # API Application
+  api:
+    build:
+      context: ..
+      dockerfile: src/TraliVali.Api/Dockerfile
+    container_name: tralivali-api-prod
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - MongoDB__ConnectionString=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      - MongoDB__DatabaseName=${MONGO_DATABASE}
+      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD}
+      - RabbitMQ__ConnectionString=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}
+      - Jwt__PrivateKey=${JWT_PRIVATE_KEY}
+      - Jwt__PublicKey=${JWT_PUBLIC_KEY}
+      - Jwt__Issuer=${JWT_ISSUER:-TraliVali}
+      - Jwt__Audience=${JWT_AUDIENCE:-TraliVali}
+      - Jwt__ExpirationDays=${JWT_EXPIRATION_DAYS:-7}
+      - Jwt__RefreshTokenExpirationDays=${JWT_REFRESH_TOKEN_EXPIRATION_DAYS:-30}
+      - AzureCommunicationEmail__ConnectionString=${AZURE_COMMUNICATION_EMAIL_CONNECTION_STRING}
+      - AzureCommunicationEmail__SenderAddress=${EMAIL_SENDER_ADDRESS}
+      - AzureCommunicationEmail__SenderName=${EMAIL_SENDER_NAME:-TraliVali}
+      - AzureBlobStorage__ConnectionString=${AZURE_BLOB_STORAGE_CONNECTION_STRING}
+      - AzureBlobStorage__BackupContainerName=${BACKUP_CONTAINER_NAME:-tralivali-backups}
+      - Invite__SigningKey=${INVITE_SIGNING_KEY}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - tralivali-prod-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/weatherforecast"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MongoDB - No exposed ports
+  mongodb:
+    image: mongo:7.0
+    container_name: tralivali-mongodb-prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - tralivali-prod-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # RabbitMQ - No exposed ports
+  rabbitmq:
+    image: rabbitmq:3.12-alpine
+    container_name: tralivali-rabbitmq-prod
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_logs:/var/log/rabbitmq
+    networks:
+      - tralivali-prod-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Redis - No exposed ports
+  redis:
+    image: redis:7-alpine
+    container_name: tralivali-redis-prod
+    restart: unless-stopped
+    command: sh -c "redis-server --requirepass $${REDIS_PASSWORD} --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - tralivali-prod-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  rabbitmq_logs:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  tralivali-prod-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
