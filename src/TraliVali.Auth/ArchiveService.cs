@@ -61,9 +61,10 @@ public class ArchiveService : IArchiveService
 
         // Try to get conversation key and derive master key if password provided
         byte[]? conversationKey = null;
-        if (!string.IsNullOrWhiteSpace(masterPassword))
+        byte[]? masterKey = null;
+        try
         {
-            try
+            if (!string.IsNullOrWhiteSpace(masterPassword))
             {
                 var storedKey = await _conversationKeys
                     .Find(k => k.ConversationId == conversationId)
@@ -72,7 +73,7 @@ public class ArchiveService : IArchiveService
                 if (storedKey != null)
                 {
                     // Derive master key from password
-                    var masterKey = await _encryptionService.DeriveMasterKeyFromPasswordAsync(
+                    masterKey = await _encryptionService.DeriveMasterKeyFromPasswordAsync(
                         masterPassword, 
                         storedKey.Salt);
 
@@ -84,11 +85,20 @@ public class ArchiveService : IArchiveService
                         storedKey.Tag);
                 }
             }
-            catch (Exception)
+        }
+        catch (Exception ex)
+        {
+            // Log key decryption failure but continue without decryption
+            // This allows graceful fallback to plain content
+            System.Diagnostics.Debug.WriteLine($"Conversation key decryption failed for conversation {conversationId}: {ex.Message}");
+            conversationKey = null;
+        }
+        finally
+        {
+            // Clear master key from memory immediately after use
+            if (masterKey != null)
             {
-                // If decryption fails, continue without decryption
-                // This allows graceful fallback to plain content
-                conversationKey = null;
+                Array.Clear(masterKey, 0, masterKey.Length);
             }
         }
 
@@ -138,73 +148,83 @@ public class ArchiveService : IArchiveService
             .ToList();
 
         // Build exported messages with decrypted content and sender names
-        var exportedMessages = messages
-            .Select(m =>
+        var exportedMessages = new List<ExportedMessage>();
+        
+        foreach (var m in messages)
+        {
+            var sender = userDictionary.TryGetValue(m.SenderId, out var s) ? s : null;
+            
+            // Decrypt message content using conversation key if available
+            string decryptedContent;
+            
+            if (conversationKey != null && !string.IsNullOrWhiteSpace(m.EncryptedContent))
             {
-                var sender = userDictionary.TryGetValue(m.SenderId, out var s) ? s : null;
-                
-                // Decrypt message content using conversation key if available
-                string decryptedContent;
-                
-                if (conversationKey != null && !string.IsNullOrWhiteSpace(m.EncryptedContent))
+                try
                 {
-                    try
+                    // Try to decrypt using conversation key
+                    // Note: We need IV and tag from the message metadata
+                    // For now, we'll parse them from the encrypted content format
+                    // Format expected: base64_iv:base64_tag:base64_ciphertext
+                    var parts = m.EncryptedContent.Split(':');
+                    if (parts.Length == 3)
                     {
-                        // Try to decrypt using conversation key
-                        // Note: We need IV and tag from the message metadata
-                        // For now, we'll parse them from the encrypted content format
-                        // Format expected: base64_iv:base64_tag:base64_ciphertext
-                        var parts = m.EncryptedContent.Split(':');
-                        if (parts.Length == 3)
-                        {
-                            var iv = parts[0];
-                            var tag = parts[1];
-                            var ciphertext = parts[2];
-                            
-                            decryptedContent = _encryptionService.DecryptMessageAsync(
-                                ciphertext, 
-                                conversationKey, 
-                                iv, 
-                                tag).GetAwaiter().GetResult();
-                        }
-                        else
-                        {
-                            // Fallback if format doesn't match
-                            decryptedContent = !string.IsNullOrWhiteSpace(m.Content)
-                                ? m.Content
-                                : m.EncryptedContent;
-                        }
+                        var iv = parts[0];
+                        var tag = parts[1];
+                        var ciphertext = parts[2];
+                        
+                        decryptedContent = await _encryptionService.DecryptMessageAsync(
+                            ciphertext, 
+                            conversationKey, 
+                            iv, 
+                            tag);
                     }
-                    catch
+                    else
                     {
-                        // If decryption fails, fall back to plain content or encrypted content
+                        // Fallback if format doesn't match
                         decryptedContent = !string.IsNullOrWhiteSpace(m.Content)
                             ? m.Content
                             : m.EncryptedContent;
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    // No conversation key available, use plain content or encrypted content
+                    // Log decryption failure but continue with fallback
+                    // This allows graceful degradation while maintaining visibility
+                    System.Diagnostics.Debug.WriteLine($"Message decryption failed for message {m.Id}: {ex.Message}");
+                    
+                    // If decryption fails, fall back to plain content or encrypted content
                     decryptedContent = !string.IsNullOrWhiteSpace(m.Content)
                         ? m.Content
                         : m.EncryptedContent;
                 }
+            }
+            else
+            {
+                // No conversation key available, use plain content or encrypted content
+                decryptedContent = !string.IsNullOrWhiteSpace(m.Content)
+                    ? m.Content
+                    : m.EncryptedContent;
+            }
 
-                return new ExportedMessage
-                {
-                    MessageId = m.Id,
-                    SenderId = m.SenderId,
-                    SenderName = sender?.DisplayName ?? "Unknown User",
-                    Type = m.Type,
-                    Content = decryptedContent,
-                    ReplyTo = m.ReplyTo,
-                    CreatedAt = m.CreatedAt,
-                    EditedAt = m.EditedAt,
-                    Attachments = m.Attachments
-                };
-            })
-            .ToList();
+            exportedMessages.Add(new ExportedMessage
+            {
+                MessageId = m.Id,
+                SenderId = m.SenderId,
+                SenderName = sender?.DisplayName ?? "Unknown User",
+                Type = m.Type,
+                Content = decryptedContent,
+                ReplyTo = m.ReplyTo,
+                CreatedAt = m.CreatedAt,
+                EditedAt = m.EditedAt,
+                Attachments = m.Attachments
+            });
+        }
+
+        // Clear sensitive key material from memory
+        if (conversationKey != null)
+        {
+            Array.Clear(conversationKey, 0, conversationKey.Length);
+        }
 
         // Build and return the export result
         return new ExportResult

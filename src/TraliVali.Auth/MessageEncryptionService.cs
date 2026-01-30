@@ -57,6 +57,7 @@ public class MessageEncryptionService : IMessageEncryptionService
         if (string.IsNullOrWhiteSpace(tag))
             throw new ArgumentException("Tag is required", nameof(tag));
 
+        byte[]? plaintext = null;
         try
         {
             var ciphertext = Convert.FromBase64String(encryptedContent);
@@ -64,14 +65,23 @@ public class MessageEncryptionService : IMessageEncryptionService
             var tagBytes = Convert.FromBase64String(tag);
 
             using var aes = new AesGcm(conversationKey, tagBytes.Length);
-            var plaintext = new byte[ciphertext.Length];
+            plaintext = new byte[ciphertext.Length];
             aes.Decrypt(ivBytes, ciphertext, tagBytes, plaintext);
 
-            return Task.FromResult(Encoding.UTF8.GetString(plaintext));
+            var result = Encoding.UTF8.GetString(plaintext);
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException("Failed to decrypt message", ex);
+        }
+        finally
+        {
+            // Clear plaintext from memory after use
+            if (plaintext != null)
+            {
+                Array.Clear(plaintext, 0, plaintext.Length);
+            }
         }
     }
 
@@ -83,10 +93,11 @@ public class MessageEncryptionService : IMessageEncryptionService
         if (string.IsNullOrWhiteSpace(salt))
             throw new ArgumentException("Salt is required", nameof(salt));
 
+        byte[]? passwordBytes = null;
         try
         {
             var saltBytes = Convert.FromBase64String(salt);
-            var passwordBytes = Encoding.UTF8.GetBytes(password);
+            passwordBytes = Encoding.UTF8.GetBytes(password);
 
             using var pbkdf2 = new Rfc2898DeriveBytes(
                 passwordBytes,
@@ -99,6 +110,14 @@ public class MessageEncryptionService : IMessageEncryptionService
         catch (Exception ex)
         {
             throw new InvalidOperationException("Failed to derive master key from password", ex);
+        }
+        finally
+        {
+            // Clear password bytes from memory after use
+            if (passwordBytes != null)
+            {
+                Array.Clear(passwordBytes, 0, passwordBytes.Length);
+            }
         }
     }
 
@@ -114,6 +133,7 @@ public class MessageEncryptionService : IMessageEncryptionService
         if (string.IsNullOrWhiteSpace(tag))
             throw new ArgumentException("Tag is required", nameof(tag));
 
+        byte[]? plaintext = null;
         try
         {
             var ciphertext = Convert.FromBase64String(encryptedKey);
@@ -121,14 +141,25 @@ public class MessageEncryptionService : IMessageEncryptionService
             var tagBytes = Convert.FromBase64String(tag);
 
             using var aes = new AesGcm(masterKey, tagBytes.Length);
-            var plaintext = new byte[ciphertext.Length];
+            plaintext = new byte[ciphertext.Length];
             aes.Decrypt(ivBytes, ciphertext, tagBytes, plaintext);
 
-            return Task.FromResult(plaintext);
+            // Return a copy so the original can be cleared
+            var result = new byte[plaintext.Length];
+            Array.Copy(plaintext, result, plaintext.Length);
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException("Failed to decrypt conversation key", ex);
+        }
+        finally
+        {
+            // Clear plaintext from memory after use
+            if (plaintext != null)
+            {
+                Array.Clear(plaintext, 0, plaintext.Length);
+            }
         }
     }
 }
