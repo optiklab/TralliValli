@@ -13,6 +13,8 @@ api.yourdomain.com {
     # Reverse proxy to API
     reverse_proxy api:8080 {
         # Health check
+        # Note: Using /weatherforecast as placeholder since API doesn't have /health endpoint yet
+        # TODO: Implement proper /health endpoint and update this configuration
         health_uri /weatherforecast
         health_interval 30s
         health_timeout 10s

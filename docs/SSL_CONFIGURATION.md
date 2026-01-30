@@ -11,6 +11,8 @@ This guide covers multiple approaches for configuring SSL/TLS certificates for T
 - [Certificate Renewal](#certificate-renewal)
 - [Troubleshooting](#troubleshooting)
 
+> **Important Note on Health Check Endpoints:** Throughout this guide, configurations reference `/weatherforecast` as the health check endpoint. This is a temporary placeholder since the TraliVali API doesn't currently have a dedicated `/health` endpoint. The nginx configuration maps `/health` (external) to `/weatherforecast` (internal) for monitoring. For production deployments, you should implement a proper health check endpoint at `/health` in your API and update these configurations accordingly.
+
 ---
 
 ## Option 1: Azure Container Apps Managed Certificates
@@ -763,7 +765,7 @@ server {
 
     # SSL security settings
     ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305';
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
     ssl_session_timeout 10m;
