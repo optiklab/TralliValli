@@ -1,0 +1,83 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "6936517763645679390"
+    }
+  },
+  "parameters": {
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the storage account"
+      }
+    },
+    "enableArchiveLifecycle": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable lifecycle policies for archives/ prefix"
+      }
+    },
+    "enableFilesLifecycle": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable lifecycle policies for files/ prefix"
+      }
+    },
+    "archiveCoolTierDays": {
+      "type": "int",
+      "defaultValue": 90,
+      "metadata": {
+        "description": "Days after which archive blobs move to Cool tier"
+      }
+    },
+    "archiveArchiveTierDays": {
+      "type": "int",
+      "defaultValue": 180,
+      "metadata": {
+        "description": "Days after which archive blobs move to Archive tier"
+      }
+    },
+    "filesCoolTierDays": {
+      "type": "int",
+      "defaultValue": 30,
+      "metadata": {
+        "description": "Days after which file blobs move to Cool tier"
+      }
+    },
+    "filesArchiveTierDays": {
+      "type": "int",
+      "defaultValue": 180,
+      "metadata": {
+        "description": "Days after which file blobs move to Archive tier"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+      "properties": {
+        "policy": {
+          "rules": "[concat(if(parameters('enableArchiveLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-archives-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('archiveCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/')))), createObject('enabled', true(), 'name', 'move-archives-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('archiveArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/'))))), createArray()), if(parameters('enableFilesLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-files-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('filesCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/')))), createObject('enabled', true(), 'name', 'move-files-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('filesArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/'))))), createArray()))]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "lifecyclePolicyName": {
+      "type": "string",
+      "value": "default"
+    },
+    "storageAccountId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+    }
+  }
+}
