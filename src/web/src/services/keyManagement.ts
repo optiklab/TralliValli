@@ -509,15 +509,12 @@ export class KeyManagementService {
    */
   async clearAll(): Promise<void> {
     const db = this.ensureDB();
-    await Promise.all([
-      db.clear('conversationKeys'),
-      db.clear('keyRotationHistory'),
-    ]);
+    await Promise.all([db.clear('conversationKeys'), db.clear('keyRotationHistory')]);
   }
 
   /**
    * Convert ArrayBuffer to Base64 string
-   * 
+   *
    * Note: This implementation is safe for binary data (Uint8Array/ArrayBuffer).
    * It handles the conversion to base64 properly for cryptographic key material.
    * Not suitable for text with Unicode characters - use TextEncoder for that.

@@ -73,7 +73,12 @@ describe('MessageComposer', () => {
       await user.type(textarea, 'Test message');
       await user.keyboard('{Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Test message',
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('adds newline on Shift+Enter', async () => {
@@ -114,7 +119,12 @@ describe('MessageComposer', () => {
       const textarea = screen.getByPlaceholderText('Type a message...');
       await user.type(textarea, '  Test message  {Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Test message',
+        undefined,
+        undefined,
+        undefined
+      );
     });
   });
 
@@ -129,7 +139,12 @@ describe('MessageComposer', () => {
       const sendButton = screen.getByLabelText('Send message');
       await user.click(sendButton);
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Test message', undefined, undefined);
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Test message',
+        undefined,
+        undefined,
+        undefined
+      );
     });
 
     it('is disabled when no message and no files', () => {
@@ -247,6 +262,7 @@ describe('MessageComposer', () => {
 
       expect(mockOnSendMessage).toHaveBeenCalledWith(
         'Message with file',
+        undefined,
         expect.arrayContaining([expect.objectContaining({ name: 'test.txt' })]),
         undefined
       );
@@ -270,6 +286,7 @@ describe('MessageComposer', () => {
 
       expect(mockOnSendMessage).toHaveBeenCalledWith(
         '',
+        undefined,
         expect.arrayContaining([expect.objectContaining({ name: 'test.txt' })]),
         undefined
       );
@@ -388,7 +405,12 @@ describe('MessageComposer', () => {
       const textarea = screen.getByPlaceholderText('Type a message...');
       await user.type(textarea, 'Reply message{Enter}');
 
-      expect(mockOnSendMessage).toHaveBeenCalledWith('Reply message', undefined, 'msg-1');
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Reply message',
+        undefined,
+        undefined,
+        'msg-1'
+      );
     });
 
     it('does not show reply preview when not replying', () => {
@@ -524,6 +546,90 @@ describe('MessageComposer', () => {
       rerender(<MessageComposer {...defaultProps} conversationId="conv-2" />);
 
       expect(textarea.value).toBe('');
+    });
+  });
+
+  describe('Encryption Integration', () => {
+    it('encrypts message when encryption service is provided', async () => {
+      const mockEncryptionService = {
+        encryptMessage: vi.fn().mockResolvedValue({
+          success: true,
+          encryptedContent: '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+        }),
+      };
+
+      const user = userEvent.setup();
+      render(
+        <MessageComposer
+          {...defaultProps}
+          encryptionService={mockEncryptionService as any}
+        />
+      );
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Secret message{Enter}');
+
+      // Verify encryption was called
+      expect(mockEncryptionService.encryptMessage).toHaveBeenCalledWith(
+        'conv-1',
+        'Secret message'
+      );
+
+      // Verify onSendMessage was called with both plaintext and encrypted content
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Secret message',
+        '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+        undefined,
+        undefined
+      );
+    });
+
+    it('sends plaintext when encryption service is not provided', async () => {
+      const user = userEvent.setup();
+      render(<MessageComposer {...defaultProps} />);
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Regular message{Enter}');
+
+      // Verify onSendMessage was called with plaintext and undefined encrypted content
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Regular message',
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+
+    it('sends plaintext when encryption fails', async () => {
+      const mockEncryptionService = {
+        encryptMessage: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Encryption failed',
+          encryptedContent: '',
+        }),
+      };
+
+      const user = userEvent.setup();
+      render(
+        <MessageComposer
+          {...defaultProps}
+          encryptionService={mockEncryptionService as any}
+        />
+      );
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Failed encryption{Enter}');
+
+      // Verify encryption was attempted
+      expect(mockEncryptionService.encryptMessage).toHaveBeenCalled();
+
+      // Verify message was sent with undefined encrypted content (fallback)
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Failed encryption',
+        undefined,
+        undefined,
+        undefined
+      );
     });
   });
 });

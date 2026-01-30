@@ -22,10 +22,16 @@ import {
   type ChangeEvent,
 } from 'react';
 import EmojiPicker, { type EmojiClickData } from 'emoji-picker-react';
+import { MessageEncryptionService } from '@/services/messageEncryption';
 
 export interface MessageComposerProps {
   conversationId: string;
-  onSendMessage: (content: string, files?: File[], replyToId?: string) => void;
+  onSendMessage: (
+    content: string,
+    encryptedContent?: string,
+    files?: File[],
+    replyToId?: string
+  ) => void;
   onTyping?: (isTyping: boolean) => void;
   replyTo?: {
     messageId: string;
@@ -35,6 +41,7 @@ export interface MessageComposerProps {
   onCancelReply?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  encryptionService?: MessageEncryptionService;
 }
 
 const TYPING_INDICATOR_TIMEOUT = 3000; // Stop typing after 3 seconds of inactivity
@@ -50,6 +57,7 @@ export function MessageComposer({
   onCancelReply,
   disabled = false,
   placeholder = 'Type a message...',
+  encryptionService,
 }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
@@ -134,7 +142,7 @@ export function MessageComposer({
     }
   };
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (disabled) return;
 
     const trimmedMessage = message.trim();
@@ -144,9 +152,21 @@ export function MessageComposer({
       return;
     }
 
-    // Send message
+    // Encrypt message if encryption service is available
+    let encryptedContent: string | undefined;
+    if (encryptionService && trimmedMessage) {
+      const result = await encryptionService.encryptMessage(conversationId, trimmedMessage);
+      if (result.success) {
+        encryptedContent = result.encryptedContent;
+      }
+      // Note: If encryption fails, we still send the message with plaintext
+      // The backend should handle this gracefully
+    }
+
+    // Send message with encrypted content (if available)
     onSendMessage(
       trimmedMessage,
+      encryptedContent,
       attachedFiles.length > 0 ? attachedFiles : undefined,
       replyTo?.messageId
     );
@@ -164,7 +184,16 @@ export function MessageComposer({
 
     // Focus back on textarea
     textareaRef.current?.focus();
-  }, [disabled, message, attachedFiles, onSendMessage, replyTo, handleTypingIndicator]);
+  }, [
+    disabled,
+    message,
+    attachedFiles,
+    onSendMessage,
+    replyTo,
+    handleTypingIndicator,
+    conversationId,
+    encryptionService,
+  ]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter to send (without Shift)

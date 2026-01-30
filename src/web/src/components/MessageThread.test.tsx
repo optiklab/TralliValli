@@ -511,5 +511,109 @@ describe('MessageThread', () => {
 
       expect(screen.getByText('encrypted-message-text')).toBeInTheDocument();
     });
+
+    it('decrypts messages when encryption service is provided', async () => {
+      const mockEncryptionService = {
+        decryptMessage: vi.fn().mockResolvedValue({
+          success: true,
+          content: 'Decrypted message',
+        }),
+      };
+
+      const encryptedMessage: Message = {
+        ...mockMessages[0],
+        content: '',
+        encryptedContent: '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+      };
+
+      useConversationStore.setState({
+        messages: { 'conv-1': [encryptedMessage] },
+      });
+
+      render(
+        <MessageThread conversationId="conv-1" encryptionService={mockEncryptionService as any} />
+      );
+
+      // Wait for decryption to complete
+      await waitFor(() => {
+        expect(mockEncryptionService.decryptMessage).toHaveBeenCalledWith(
+          'conv-1',
+          '{"iv":"abc","ciphertext":"xyz","tag":"123"}'
+        );
+      });
+
+      // Verify decrypted content is displayed
+      await waitFor(() => {
+        expect(screen.getByText('Decrypted message')).toBeInTheDocument();
+      });
+    });
+
+    it('shows placeholder when decryption fails', async () => {
+      const mockEncryptionService = {
+        decryptMessage: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Decryption failed',
+          content: '',
+        }),
+      };
+
+      const encryptedMessage: Message = {
+        ...mockMessages[0],
+        content: '', // No plaintext fallback
+        encryptedContent: '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+      };
+
+      useConversationStore.setState({
+        messages: { 'conv-1': [encryptedMessage] },
+      });
+
+      render(
+        <MessageThread conversationId="conv-1" encryptionService={mockEncryptionService as any} />
+      );
+
+      // Wait for decryption attempt
+      await waitFor(() => {
+        expect(mockEncryptionService.decryptMessage).toHaveBeenCalled();
+      });
+
+      // Verify placeholder is shown
+      await waitFor(() => {
+        expect(screen.getByText('[Unable to decrypt message]')).toBeInTheDocument();
+      });
+    });
+
+    it('falls back to plaintext when decryption fails and plaintext is available', async () => {
+      const mockEncryptionService = {
+        decryptMessage: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Decryption failed',
+          content: '',
+        }),
+      };
+
+      const messageWithFallback: Message = {
+        ...mockMessages[0],
+        content: 'Plaintext fallback', // Has plaintext fallback
+        encryptedContent: '{"iv":"bad","ciphertext":"data","tag":"invalid"}',
+      };
+
+      useConversationStore.setState({
+        messages: { 'conv-1': [messageWithFallback] },
+      });
+
+      render(
+        <MessageThread conversationId="conv-1" encryptionService={mockEncryptionService as any} />
+      );
+
+      // Wait for decryption attempt
+      await waitFor(() => {
+        expect(mockEncryptionService.decryptMessage).toHaveBeenCalled();
+      });
+
+      // Verify plaintext fallback is shown
+      await waitFor(() => {
+        expect(screen.getByText('Plaintext fallback')).toBeInTheDocument();
+      });
+    });
   });
 });
