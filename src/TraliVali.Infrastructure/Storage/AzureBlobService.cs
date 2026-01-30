@@ -1,6 +1,7 @@
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
 
 namespace TraliVali.Infrastructure.Storage;
 
@@ -131,5 +132,55 @@ public class AzureBlobService : IAzureBlobService
 
         var dateString = date.ToString("yyyy-MM-dd");
         return $"archives/{date.Year:D4}/{date.Month:D2}/messages_{conversationId}_{dateString}.json";
+    }
+
+    /// <inheritdoc/>
+    public string GenerateUploadUrl(string blobPath, TimeSpan? expiresIn = null)
+    {
+        if (string.IsNullOrWhiteSpace(blobPath))
+            throw new ArgumentException("Blob path cannot be null or empty", nameof(blobPath));
+
+        var blobClient = _containerClient.GetBlobClient(blobPath);
+        var expiresOn = DateTimeOffset.UtcNow.Add(expiresIn ?? TimeSpan.FromHours(1));
+
+        // Generate SAS token with write permissions
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = _containerClient.Name,
+            BlobName = blobPath,
+            Resource = "b", // blob
+            StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5), // Allow 5 minutes clock skew
+            ExpiresOn = expiresOn
+        };
+
+        sasBuilder.SetPermissions(BlobSasPermissions.Create | BlobSasPermissions.Write);
+
+        var sasUri = blobClient.GenerateSasUri(sasBuilder);
+        return sasUri.ToString();
+    }
+
+    /// <inheritdoc/>
+    public string GenerateDownloadUrl(string blobPath, TimeSpan? expiresIn = null)
+    {
+        if (string.IsNullOrWhiteSpace(blobPath))
+            throw new ArgumentException("Blob path cannot be null or empty", nameof(blobPath));
+
+        var blobClient = _containerClient.GetBlobClient(blobPath);
+        var expiresOn = DateTimeOffset.UtcNow.Add(expiresIn ?? TimeSpan.FromHours(1));
+
+        // Generate SAS token with read permissions
+        var sasBuilder = new BlobSasBuilder
+        {
+            BlobContainerName = _containerClient.Name,
+            BlobName = blobPath,
+            Resource = "b", // blob
+            StartsOn = DateTimeOffset.UtcNow.AddMinutes(-5), // Allow 5 minutes clock skew
+            ExpiresOn = expiresOn
+        };
+
+        sasBuilder.SetPermissions(BlobSasPermissions.Read);
+
+        var sasUri = blobClient.GenerateSasUri(sasBuilder);
+        return sasUri.ToString();
     }
 }
