@@ -60,6 +60,30 @@ public class File
     public string? ThumbnailPath { get; set; }
 
     /// <summary>
+    /// Gets or sets the width in pixels (for images/videos)
+    /// </summary>
+    [BsonElement("width")]
+    public int? Width { get; set; }
+
+    /// <summary>
+    /// Gets or sets the height in pixels (for images/videos)
+    /// </summary>
+    [BsonElement("height")]
+    public int? Height { get; set; }
+
+    /// <summary>
+    /// Gets or sets the duration in seconds (for videos)
+    /// </summary>
+    [BsonElement("duration")]
+    public double? Duration { get; set; }
+
+    /// <summary>
+    /// Gets or sets the EXIF metadata (for images)
+    /// </summary>
+    [BsonElement("exifData")]
+    public string? ExifData { get; set; }
+
+    /// <summary>
     /// Gets or sets the date and time when the file was uploaded
     /// </summary>
     [BsonElement("createdAt")]

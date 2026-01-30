@@ -8,6 +8,7 @@ using TraliVali.Api.Controllers;
 using TraliVali.Api.Models;
 using TraliVali.Domain.Entities;
 using TraliVali.Infrastructure.Data;
+using TraliVali.Infrastructure.Messaging;
 using TraliVali.Infrastructure.Repositories;
 using TraliVali.Infrastructure.Storage;
 
@@ -90,10 +91,12 @@ public class FilesControllerIntegrationTests : IAsyncLifetime
 
         // Setup controller
         var logger = new Mock<ILogger<FilesController>>();
+        var mockMessagePublisher = new Mock<IMessagePublisher>();
         _controller = new FilesController(
             _fileRepository,
             _conversationRepository,
             _blobService,
+            mockMessagePublisher.Object,
             logger.Object
         );
     }

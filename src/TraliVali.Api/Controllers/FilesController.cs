@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using TraliVali.Api.Models;
 using TraliVali.Domain.Entities;
+using TraliVali.Infrastructure.Messaging;
 using TraliVali.Infrastructure.Repositories;
 using TraliVali.Infrastructure.Storage;
 
@@ -18,6 +20,7 @@ public class FilesController : ControllerBase
     private readonly IRepository<Domain.Entities.File> _fileRepository;
     private readonly IRepository<Conversation> _conversationRepository;
     private readonly IAzureBlobService _blobService;
+    private readonly IMessagePublisher _messagePublisher;
     private readonly ILogger<FilesController> _logger;
 
     // Allowed MIME types
@@ -47,11 +50,13 @@ public class FilesController : ControllerBase
         IRepository<Domain.Entities.File> fileRepository,
         IRepository<Conversation> conversationRepository,
         IAzureBlobService blobService,
+        IMessagePublisher messagePublisher,
         ILogger<FilesController> logger)
     {
         _fileRepository = fileRepository ?? throw new ArgumentNullException(nameof(fileRepository));
         _conversationRepository = conversationRepository ?? throw new ArgumentNullException(nameof(conversationRepository));
         _blobService = blobService ?? throw new ArgumentNullException(nameof(blobService));
+        _messagePublisher = messagePublisher ?? throw new ArgumentNullException(nameof(messagePublisher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -191,6 +196,25 @@ public class FilesController : ControllerBase
             {
                 return StatusCode(StatusCodes.Status403Forbidden, 
                     new { message = "Only the file uploader can complete the upload." });
+            }
+
+            // Publish message to files.process queue for background processing
+            try
+            {
+                var filePayload = new
+                {
+                    fileId = file.Id,
+                    blobPath = file.BlobPath,
+                    mimeType = file.MimeType,
+                    fileName = file.FileName
+                };
+                var messageJson = JsonSerializer.Serialize(filePayload);
+                await _messagePublisher.PublishAsync("files.process", messageJson, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish file processing message for file {FileId}", file.Id);
+                // Continue - the file upload is completed, processing can be retried later
             }
 
             _logger.LogInformation(
