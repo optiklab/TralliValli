@@ -3,12 +3,12 @@ using TraliVali.Domain.Entities;
 namespace TraliVali.Tests.Entities;
 
 /// <summary>
-/// Tests for Invite entity validation
+/// Tests for Invite entity validation following Given-When-Then pattern
 /// </summary>
 public class InviteValidationTests
 {
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenInviteIsValid()
+    public void GivenValidInvite_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var invite = new Invite
@@ -29,7 +29,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenTokenIsEmpty()
+    public void GivenEmptyToken_WhenValidating_ThenReturnsTokenRequiredError()
     {
         // Arrange
         var invite = new Invite
@@ -49,7 +49,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenEmailIsEmpty()
+    public void GivenEmptyEmail_WhenValidating_ThenReturnsEmailRequiredError()
     {
         // Arrange
         var invite = new Invite
@@ -69,7 +69,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenEmailIsInvalid()
+    public void GivenInvalidEmail_WhenValidating_ThenReturnsEmailFormatInvalidError()
     {
         // Arrange
         var invite = new Invite
@@ -89,7 +89,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenInviterIdIsEmpty()
+    public void GivenEmptyInviterId_WhenValidating_ThenReturnsInviterIdRequiredError()
     {
         // Arrange
         var invite = new Invite
@@ -109,7 +109,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenExpiresAtIsBeforeCreatedAt()
+    public void GivenExpiresAtBeforeCreatedAt_WhenValidating_ThenReturnsExpiresAtAfterCreatedAtError()
     {
         // Arrange
         var invite = new Invite
@@ -129,7 +129,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenInviteIsUsedButUsedByIsNull()
+    public void GivenInviteIsUsedButUsedByIsNull_WhenValidating_ThenReturnsUsedByRequiredError()
     {
         // Arrange
         var invite = new Invite
@@ -152,7 +152,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenInviteIsUsedButUsedAtIsNull()
+    public void GivenInviteIsUsedButUsedAtIsNull_WhenValidating_ThenReturnsUsedAtRequiredError()
     {
         // Arrange
         var invite = new Invite
@@ -175,7 +175,7 @@ public class InviteValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenInviteIsUsedWithAllRequiredFields()
+    public void GivenUsedInviteWithAllRequiredFields_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var invite = new Invite
