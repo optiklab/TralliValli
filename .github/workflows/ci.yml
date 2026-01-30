@@ -63,12 +63,12 @@ jobs:
     
     - name: Start Docker Compose services
       run: |
-        docker-compose -f docker-compose.e2e.yml up -d
+        docker compose -f docker-compose.e2e.yml up -d
         echo "Waiting for services to be healthy..."
         sleep 30
     
     - name: Check Docker services
-      run: docker-compose -f docker-compose.e2e.yml ps
+      run: docker compose -f docker-compose.e2e.yml ps
     
     - name: Setup .NET for API
       uses: actions/setup-dotnet@v4
@@ -174,4 +174,4 @@ jobs:
     
     - name: Stop Docker Compose services
       if: always()
-      run: docker-compose -f docker-compose.e2e.yml down -v
+      run: docker compose -f docker-compose.e2e.yml down -v
