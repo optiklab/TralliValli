@@ -56,7 +56,89 @@ Configure the following secrets in your GitHub repository (`Settings` → `Secre
 
 ## Creating Azure Service Principal
 
-To create the `AZURE_CREDENTIALS` secret, you need to create an Azure Service Principal:
+To create the `AZURE_CREDENTIALS` secret, you have two options:
+
+### Option 1: OpenID Connect (OIDC) - Recommended
+
+OIDC provides better security with short-lived tokens and no stored secrets. This is the recommended approach for GitHub Actions.
+
+#### Steps for OIDC Setup:
+
+1. **Create an Azure App Registration:**
+
+```bash
+# Set your subscription ID
+SUBSCRIPTION_ID="your-subscription-id"
+
+# Create the app registration
+az ad app create --display-name "github-actions-tralivali"
+```
+
+2. **Create a service principal:**
+
+```bash
+# Get the app ID from the previous step
+APP_ID=$(az ad app list --display-name "github-actions-tralivali" --query "[0].appId" -o tsv)
+
+# Create service principal
+az ad sp create --id $APP_ID
+
+# Assign Contributor role
+az role assignment create \
+  --assignee $APP_ID \
+  --role Contributor \
+  --scope /subscriptions/$SUBSCRIPTION_ID
+```
+
+3. **Configure federated credentials:**
+
+```bash
+# Get the object ID of the service principal
+OBJECT_ID=$(az ad sp show --id $APP_ID --query id -o tsv)
+
+# Create federated credential for the main branch
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-actions-main",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_GITHUB_ORG/TralliValli:ref:refs/heads/main",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+
+# Also create for workflow_dispatch if needed
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-actions-workflow",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_GITHUB_ORG/TralliValli:environment:production",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+```
+
+4. **Configure GitHub repository:**
+
+Add these secrets to your GitHub repository:
+- `AZURE_CLIENT_ID`: The Application (client) ID from the app registration
+- `AZURE_TENANT_ID`: Your Azure AD tenant ID
+- `AZURE_SUBSCRIPTION_ID`: Your subscription ID
+
+5. **Update the workflow file** to use OIDC authentication:
+
+Replace the login step with:
+```yaml
+- name: Log in to Azure
+  uses: azure/login@v1
+  with:
+    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+```
+
+### Option 2: Service Principal with Secret (Legacy)
+
+> **Note:** This method uses the `--sdk-auth` flag which is deprecated and will be removed in future Azure CLI versions. Use Option 1 (OIDC) for new deployments.
 
 ```bash
 # Set your subscription ID
@@ -91,6 +173,33 @@ The JSON format should look like:
 ### Scoped Service Principal (More Secure)
 
 For better security, create separate service principals for each environment with limited scope:
+
+#### Using OIDC (Recommended):
+
+```bash
+# For development environment
+APP_ID=$(az ad app create --display-name "github-actions-tralivali-dev" --query appId -o tsv)
+az ad sp create --id $APP_ID
+
+az role assignment create \
+  --assignee $APP_ID \
+  --role Contributor \
+  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/tralivali-dev-rg
+
+# Create federated credential
+az ad app federated-credential create \
+  --id $APP_ID \
+  --parameters '{
+    "name": "github-dev-env",
+    "issuer": "https://token.actions.githubusercontent.com",
+    "subject": "repo:YOUR_GITHUB_ORG/TralliValli:environment:development",
+    "audiences": ["api://AzureADTokenExchange"]
+  }'
+```
+
+#### Using Service Principal with Secret (Legacy):
+
+> **Note:** The `--sdk-auth` flag is deprecated. Use OIDC method above for new deployments.
 
 ```bash
 # For development environment
@@ -263,5 +372,5 @@ If manual deployments don't show environment options:
 
 - [Azure Deployment Templates](../deploy/azure/README.md)
 - [Dockerfile](../src/TraliVali.Api/Dockerfile)
-- [Azure Container Apps Documentation](https://docs.microsoft.com/en-us/azure/container-apps/)
+- [Azure Container Apps Documentation](https://learn.microsoft.com/en-us/azure/container-apps/)
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)

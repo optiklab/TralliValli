@@ -20,6 +20,7 @@ env:
   IMAGE_NAME: tralivali-api
   RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
   CONTAINER_APP_NAME: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
+  HEALTH_CHECK_ENDPOINT: /weatherforecast
 
 jobs:
   build-and-push:
@@ -81,12 +82,15 @@ jobs:
     - name: Deploy to Azure Container Apps
       id: deploy
       run: |
+        set -e
+        
+        echo "Updating container app with new image..."
         az containerapp update \
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
           --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         
-        # Get the app URL
+        echo "Retrieving application URL..."
         APP_URL=$(az containerapp show \
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -94,10 +98,12 @@ jobs:
           --output tsv)
         
         echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
-        echo "Deployed to: https://$APP_URL"
+        echo "✓ Deployed successfully to: https://$APP_URL"
     
     - name: Verify deployment
       run: |
+        set -e
+        
         APP_URL=$(az containerapp show \
           --name ${{ env.CONTAINER_APP_NAME }} \
           --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -105,16 +111,33 @@ jobs:
           --output tsv)
         
         echo "Waiting for application to be ready..."
-        sleep 30
         
-        # Check if the app is responding
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/weatherforecast || echo "000")
+        # Retry logic: try up to 10 times with 10 second intervals
+        MAX_RETRIES=10
+        RETRY_COUNT=0
+        SUCCESS=false
         
-        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-          echo "✓ Application is responding with HTTP $HTTP_CODE"
-        else
-          echo "⚠ Application returned HTTP $HTTP_CODE"
-          echo "Note: This may be expected if the endpoint requires authentication"
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          sleep 10
+          
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }} || echo "000")
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Application is responding with HTTP $HTTP_CODE"
+            SUCCESS=true
+            break
+          fi
+          
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Received HTTP $HTTP_CODE, retrying..."
+        done
+        
+        if [ "$SUCCESS" = false ]; then
+          echo "⚠ WARNING: Application health check failed after $MAX_RETRIES attempts"
+          echo "Last HTTP code: $HTTP_CODE"
+          echo "Endpoint: https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }}"
+          echo "Note: This may be expected if the endpoint requires authentication or does not exist"
+          echo "Check the container logs for more details"
         fi
     
     - name: Log out from Azure
@@ -143,12 +166,15 @@ jobs:
     - name: Deploy to Azure Container Apps
       id: deploy
       run: |
+        set -e
+        
+        echo "Updating container app with new image..."
         az containerapp update \
           --name ${{ secrets.AZURE_CONTAINER_APP_NAME_STAGING }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
           --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         
-        # Get the app URL
+        echo "Retrieving application URL..."
         APP_URL=$(az containerapp show \
           --name ${{ secrets.AZURE_CONTAINER_APP_NAME_STAGING }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
@@ -156,7 +182,47 @@ jobs:
           --output tsv)
         
         echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
-        echo "Deployed to: https://$APP_URL"
+        echo "✓ Deployed successfully to: https://$APP_URL"
+    
+    - name: Verify deployment
+      run: |
+        set -e
+        
+        APP_URL=$(az containerapp show \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_STAGING }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "Waiting for application to be ready..."
+        
+        # Retry logic: try up to 10 times with 10 second intervals
+        MAX_RETRIES=10
+        RETRY_COUNT=0
+        SUCCESS=false
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          sleep 10
+          
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }} || echo "000")
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Application is responding with HTTP $HTTP_CODE"
+            SUCCESS=true
+            break
+          fi
+          
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Received HTTP $HTTP_CODE, retrying..."
+        done
+        
+        if [ "$SUCCESS" = false ]; then
+          echo "⚠ WARNING: Application health check failed after $MAX_RETRIES attempts"
+          echo "Last HTTP code: $HTTP_CODE"
+          echo "Endpoint: https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }}"
+          echo "Note: This may be expected if the endpoint requires authentication or does not exist"
+          echo "Check the container logs for more details"
+        fi
     
     - name: Log out from Azure
       if: always()
@@ -184,12 +250,15 @@ jobs:
     - name: Deploy to Azure Container Apps
       id: deploy
       run: |
+        set -e
+        
+        echo "Updating container app with new image..."
         az containerapp update \
           --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
           --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         
-        # Get the app URL
+        echo "Retrieving application URL..."
         APP_URL=$(az containerapp show \
           --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
@@ -197,10 +266,12 @@ jobs:
           --output tsv)
         
         echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
-        echo "Deployed to: https://$APP_URL"
+        echo "✓ Deployed successfully to: https://$APP_URL"
     
     - name: Verify deployment
       run: |
+        set -e
+        
         APP_URL=$(az containerapp show \
           --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
           --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
@@ -208,16 +279,33 @@ jobs:
           --output tsv)
         
         echo "Waiting for application to be ready..."
-        sleep 30
         
-        # Check if the app is responding
-        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/weatherforecast || echo "000")
+        # Retry logic: try up to 10 times with 10 second intervals
+        MAX_RETRIES=10
+        RETRY_COUNT=0
+        SUCCESS=false
         
-        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-          echo "✓ Application is responding with HTTP $HTTP_CODE"
-        else
-          echo "⚠ Application returned HTTP $HTTP_CODE"
-          echo "Note: This may be expected if the endpoint requires authentication"
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          sleep 10
+          
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }} || echo "000")
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✓ Application is responding with HTTP $HTTP_CODE"
+            SUCCESS=true
+            break
+          fi
+          
+          RETRY_COUNT=$((RETRY_COUNT + 1))
+          echo "Attempt $RETRY_COUNT/$MAX_RETRIES: Received HTTP $HTTP_CODE, retrying..."
+        done
+        
+        if [ "$SUCCESS" = false ]; then
+          echo "⚠ WARNING: Application health check failed after $MAX_RETRIES attempts"
+          echo "Last HTTP code: $HTTP_CODE"
+          echo "Endpoint: https://$APP_URL${{ env.HEALTH_CHECK_ENDPOINT }}"
+          echo "Note: This may be expected if the endpoint requires authentication or does not exist"
+          echo "Check the container logs for more details"
         fi
     
     - name: Log out from Azure
