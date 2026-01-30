@@ -1,0 +1,56 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore TraliVali.slnx
+      
+    - name: Build
+      run: dotnet build TraliVali.slnx --no-restore --configuration Release
+      
+    - name: Run unit tests
+      run: dotnet test TraliVali.slnx --no-build --configuration Release --filter "FullyQualifiedName!~Integration" --verbosity normal --logger trx --results-directory ./TestResults/Unit
+      
+    - name: Run integration tests with Docker services
+      run: dotnet test TraliVali.slnx --no-build --configuration Release --filter "FullyQualifiedName~Integration" --verbosity normal --logger trx --results-directory ./TestResults/Integration --collect:"XPlat Code Coverage"
+      env:
+        # Testcontainers will automatically start Docker containers for:
+        # - MongoDB
+        # - RabbitMQ
+        # - Redis
+        # - Azurite (Azure Storage Emulator)
+        DOCKER_HOST: unix:///var/run/docker.sock
+      
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: ./TestResults/**/*
+        retention-days: 30
+        
+    - name: Upload code coverage
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage
+        path: ./TestResults/**/coverage.cobertura.xml
+        retention-days: 30
