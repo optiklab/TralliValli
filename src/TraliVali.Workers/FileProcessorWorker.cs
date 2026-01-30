@@ -349,8 +349,7 @@ public class FileProcessorWorker : BackgroundService
         using var thumbnail = image.Clone(ctx => ctx.Resize(thumbnailWidth, thumbnailHeight));
         
         // Generate thumbnail blob path
-        var fileIdWithoutExtension = Path.GetFileNameWithoutExtension(payload.FileId);
-        var thumbnailPath = $"thumbnails/{fileIdWithoutExtension}_thumb.jpg";
+        var thumbnailPath = $"thumbnails/{payload.FileId}_thumb.jpg";
         
         // Upload thumbnail to blob storage
         using var thumbnailStream = new MemoryStream();
@@ -372,8 +371,9 @@ public class FileProcessorWorker : BackgroundService
         var tempThumbnailPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
         try
         {
-            // Extract first frame as thumbnail
-            await FFMpeg.SnapshotAsync(videoPath, tempThumbnailPath, captureTime: TimeSpan.FromSeconds(0));
+            // Extract first frame as thumbnail (at 1 second to avoid black frames)
+            var captureTime = TimeSpan.FromSeconds(1);
+            await FFMpeg.SnapshotAsync(videoPath, tempThumbnailPath, captureTime: captureTime);
 
             // Resize thumbnail if needed
             using var thumbnailImage = await Image.LoadAsync(tempThumbnailPath);
@@ -388,8 +388,7 @@ public class FileProcessorWorker : BackgroundService
             }
 
             // Generate thumbnail blob path
-            var fileIdWithoutExtension = Path.GetFileNameWithoutExtension(payload.FileId);
-            var thumbnailPath = $"thumbnails/{fileIdWithoutExtension}_thumb.jpg";
+            var thumbnailPath = $"thumbnails/{payload.FileId}_thumb.jpg";
 
             // Upload thumbnail to blob storage
             using var thumbnailStream = new MemoryStream();

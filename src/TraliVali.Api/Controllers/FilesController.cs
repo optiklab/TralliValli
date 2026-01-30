@@ -199,15 +199,23 @@ public class FilesController : ControllerBase
             }
 
             // Publish message to files.process queue for background processing
-            var filePayload = new
+            try
             {
-                FileId = file.Id,
-                BlobPath = file.BlobPath,
-                MimeType = file.MimeType,
-                FileName = file.FileName
-            };
-            var messageJson = JsonSerializer.Serialize(filePayload);
-            await _messagePublisher.PublishAsync("files.process", messageJson, cancellationToken);
+                var filePayload = new
+                {
+                    fileId = file.Id,
+                    blobPath = file.BlobPath,
+                    mimeType = file.MimeType,
+                    fileName = file.FileName
+                };
+                var messageJson = JsonSerializer.Serialize(filePayload);
+                await _messagePublisher.PublishAsync("files.process", messageJson, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish file processing message for file {FileId}", file.Id);
+                // Continue - the file upload is completed, processing can be retried later
+            }
 
             _logger.LogInformation(
                 "File upload completed for file {FileId} in conversation {ConversationId} by user {UserId}",
