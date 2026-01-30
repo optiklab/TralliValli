@@ -15,10 +15,11 @@ import { formatFileSize } from '@/utils/fileUtils';
 export interface FileAttachmentProps {
   file: FileMetadata;
   thumbnail?: string;
+  fullImageUrl?: string; // URL for full-size image in lightbox
   onDownload?: (file: FileMetadata) => void;
 }
 
-export function FileAttachment({ file, thumbnail, onDownload }: FileAttachmentProps) {
+export function FileAttachment({ file, thumbnail, fullImageUrl, onDownload }: FileAttachmentProps) {
   const [imageError, setImageError] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const lightboxRef = useRef<HTMLDivElement>(null);
@@ -161,14 +162,14 @@ export function FileAttachment({ file, thumbnail, onDownload }: FileAttachmentPr
             </svg>
           </button>
 
-          {/* Image */}
+          {/* Image - use full image URL if available, otherwise fall back to thumbnail */}
           <div
             className="max-w-7xl max-h-screen p-4"
             onClick={(e) => e.stopPropagation()}
             role="presentation"
           >
             <img
-              src={thumbnail}
+              src={fullImageUrl || thumbnail}
               alt={file.fileName}
               className="max-w-full max-h-screen object-contain"
             />

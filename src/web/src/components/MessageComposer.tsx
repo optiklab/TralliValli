@@ -79,6 +79,8 @@ export function MessageComposer({
     setAttachedFiles([]);
 
     setShowEmojiPicker(false);
+    setIsDragging(false);
+    dragCounterRef.current = 0;
   }, [conversationId]);
 
   // Debounced typing indicator

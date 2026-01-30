@@ -264,12 +264,35 @@ describe('FileUploadService', () => {
       await expect(uploadPromise).rejects.toThrow('Upload was cancelled');
     });
 
-    it('should compress large images', async () => {
-      // Create a mock large image file (> 2MB)
-      const largeImageData = new Array(3 * 1024 * 1024).fill('x').join('');
-      const mockFile = new File([largeImageData], 'large-image.jpg', {
+    it('should compress images with large dimensions', async () => {
+      // Create a mock image file with large dimensions (will trigger dimension-based compression)
+      const imageData = 'small image data';
+      const mockFile = new File([imageData], 'large-dimension-image.jpg', {
         type: 'image/jpeg',
       });
+
+      // Mock Image returns dimensions over MAX_IMAGE_DIMENSION to trigger compression
+      global.Image = class {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        src = '';
+
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) {
+              this.onload();
+            }
+          }, 0);
+        }
+
+        get width() {
+          return 4000; // Over MAX_IMAGE_DIMENSION (2048)
+        }
+
+        get height() {
+          return 3000;
+        }
+      } as unknown as typeof Image;
 
       const mockPresignedUrlResponse: PresignedUrlResponse = {
         uploadUrl: 'https://storage.example.com/upload',
@@ -282,9 +305,9 @@ describe('FileUploadService', () => {
         id: 'file-123',
         conversationId: 'conv-123',
         uploaderId: 'user-123',
-        fileName: 'large-image.jpg',
+        fileName: 'large-dimension-image.jpg',
         mimeType: 'image/jpeg',
-        size: 1024 * 1024, // Compressed size
+        size: 1024 * 100, // Small file size
         blobPath: 'files/file-123.jpg',
         createdAt: new Date().toISOString(),
       };
@@ -304,7 +327,7 @@ describe('FileUploadService', () => {
       });
 
       expect(result.fileId).toBe('file-123');
-      // Verify getPresignedUrl was called (compression happened if file size changed)
+      // Verify getPresignedUrl was called
       expect(apiClient.getPresignedUrl).toHaveBeenCalled();
     });
 

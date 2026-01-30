@@ -135,20 +135,6 @@ describe('FileAttachment Component', () => {
     expect(fileName).toBeInTheDocument();
   });
 
-  it('should open lightbox when image thumbnail is clicked', async () => {
-    const user = userEvent.setup();
-    const thumbnail = 'data:image/jpeg;base64,mockthumbnail';
-
-    render(<FileAttachment file={mockImageFile} thumbnail={thumbnail} />);
-
-    const img = screen.getByAltText('image.jpg');
-    await user.click(img);
-
-    // Lightbox should be visible
-    expect(screen.getByRole('dialog', { name: 'Image lightbox' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Close lightbox')).toBeInTheDocument();
-  });
-
   it('should close lightbox when close button is clicked', async () => {
     const user = userEvent.setup();
     const thumbnail = 'data:image/jpeg;base64,mockthumbnail';

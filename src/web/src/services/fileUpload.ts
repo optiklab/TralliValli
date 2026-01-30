@@ -57,6 +57,29 @@ function isImage(file: File): boolean {
 }
 
 /**
+ * Check if an image needs compression based on dimensions
+ */
+async function needsCompression(file: File): Promise<boolean> {
+  if (!isImage(file)) {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve(img.width > MAX_IMAGE_DIMENSION || img.height > MAX_IMAGE_DIMENSION);
+      };
+      img.onerror = () => resolve(false);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(false);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Compress an image file to meet the max size and dimension requirements
  */
 async function compressImage(file: File): Promise<File> {
@@ -274,13 +297,18 @@ export class FileUploadService {
     // Compress image if needed
     if (isImage(file)) {
       try {
-        fileToUpload = await compressImage(file);
+        // Only compress if dimensions exceed max
+        const shouldCompress = await needsCompression(file);
+        if (shouldCompress) {
+          fileToUpload = await compressImage(file);
+        }
+        
         thumbnailDataUrl = await generateThumbnail(fileToUpload);
 
-        // Validate compressed size
+        // Validate file size (even if dimensions don't require compression, size might still be too large)
         if (fileToUpload.size > MAX_IMAGE_SIZE_BYTES) {
           throw new Error(
-            `Image is too large after compression (${(fileToUpload.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB.`
+            `Image is too large (${(fileToUpload.size / (1024 * 1024)).toFixed(1)}MB). Maximum size is 2MB. Try reducing image quality or dimensions.`
           );
         }
       } catch (error) {
