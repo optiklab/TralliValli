@@ -5,20 +5,70 @@ This directory contains Bicep templates for deploying TraliVali infrastructure t
 ## Files
 
 - **main.bicep**: Main infrastructure template that provisions:
-  - Azure Storage Account with Hot access tier
-  - Blob containers (archived-messages, files)
-  - Lifecycle management policies
-  - Security configurations (HTTPS only, TLS 1.2+, private access)
+  - **Log Analytics Workspace**: Centralized logging and monitoring
+  - **Container Registry**: Private Docker image registry with admin access
+  - **Container Apps Environment**: Managed environment for containerized applications
+  - **Container Apps (API)**: Scalable API container with auto-scaling rules
+  - **Container Instance (MongoDB)**: MongoDB database with persistent storage
+  - **Azure Communication Services**: Communication platform for messaging
+  - **Storage Account**: Blob storage with Hot access tier
+  - **Blob containers**: archived-messages and files containers
+  - **File Share**: Persistent storage for MongoDB data
+  - **Lifecycle management policies**: Automatic blob tiering
 
 - **storage-lifecycle.bicep**: Blob storage lifecycle management policies module
   - Configures automatic tiering based on blob age
   - Separate policies for archives/ and files/ prefixes
 
+## Infrastructure Overview
+
+The template provisions a complete application infrastructure with:
+
+### Compute Resources
+- **Container Apps Environment**: Managed Kubernetes environment for containers
+- **API Container App**: Scalable .NET API with automatic SSL, ingress, and health monitoring
+- **MongoDB Container Instance**: Dedicated MongoDB container with persistent Azure File storage
+
+### Data & Storage
+- **Storage Account**: Blob storage for files and archived messages
+- **Azure File Share**: Persistent storage for MongoDB data (20GB dev, 100GB prod)
+- **Lifecycle Policies**: Automatic tiering to Cool (30-90 days) and Archive (180 days) tiers
+
+### Networking & Security
+- **Container Registry**: Private image registry with authentication
+- **Log Analytics**: Centralized logging for all resources
+- **Communication Services**: Azure Communication Services for messaging
+
+### Environment-Based Configuration
+Resources are automatically sized based on the environment parameter:
+- **dev**: Minimal resources, lower costs, single replica
+- **staging**: Medium resources for testing
+- **prod**: High availability, zone redundancy, multiple replicas
+
 ## Prerequisites
 
 - Azure CLI installed ([Install Guide](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli))
-- Azure subscription with appropriate permissions
+- Azure subscription with appropriate permissions to create:
+  - Resource Groups
+  - Container Apps and Environments
+  - Container Instances
+  - Container Registry
+  - Storage Accounts
+  - Log Analytics Workspaces
+  - Communication Services
 - Logged in to Azure CLI: `az login`
+- A container image built and ready to push (or use placeholder initially)
+
+## Required Parameters
+
+The template requires the following parameters to be provided:
+
+### Secure Parameters (REQUIRED)
+```bash
+# MongoDB credentials - must be provided at deployment
+mongoRootUsername="admin"
+mongoRootPassword="YourSecurePassword123!"  # Use strong password
+```
 
 ## Deployment
 
@@ -36,18 +86,335 @@ az group create \
   --location $LOCATION
 ```
 
-### 2. Deploy Infrastructure
+### 2. Deploy Complete Infrastructure
 
 ```bash
-# Deploy main template
+# Deploy main template with required parameters
 az deployment group create \
   --resource-group $RESOURCE_GROUP \
   --template-file main.bicep \
   --parameters environment=$ENVIRONMENT \
-  --parameters location=$LOCATION
+  --parameters location=$LOCATION \
+  --parameters mongoRootUsername="admin" \
+  --parameters mongoRootPassword="YourSecurePassword123!"
 ```
 
-### 3. Deploy Only Lifecycle Policies (Optional)
+### 3. Deploy with Parameter File (Recommended for Production)
+
+Create a parameter file `parameters.prod.json`:
+
+```json
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "eastus"
+    },
+    "appName": {
+      "value": "tralivali"
+    },
+    "mongoRootUsername": {
+      "value": "admin"
+    },
+    "mongoRootPassword": {
+      "reference": {
+        "keyVault": {
+          "id": "/subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.KeyVault/vaults/{vault-name}"
+        },
+        "secretName": "mongodb-root-password"
+      }
+    },
+    "apiMinReplicas": {
+      "value": 2
+    },
+    "apiMaxReplicas": {
+      "value": 10
+    },
+    "logAnalyticsRetentionDays": {
+      "value": 90
+    }
+  }
+}
+```
+
+Then deploy:
+
+```bash
+az deployment group create \
+  --resource-group $RESOURCE_GROUP \
+  --template-file main.bicep \
+  --parameters @parameters.prod.json
+```
+
+### 4. Customize Parameters
+
+You can override any default parameters:
+
+```bash
+az deployment group create \
+  --resource-group $RESOURCE_GROUP \
+  --template-file main.bicep \
+  --parameters environment=prod \
+  --parameters location=westus2 \
+  --parameters appName=myapp \
+  --parameters apiMinReplicas=3 \
+  --parameters apiMaxReplicas=15 \
+  --parameters mongoCpu=2.0 \
+  --parameters mongoMemory=4.0 \
+  --parameters mongoRootUsername="admin" \
+  --parameters mongoRootPassword="YourSecurePassword123!"
+```
+
+## Template Parameters Reference
+
+### Environment Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `environment` | string | `dev` | Environment name (dev, staging, prod) |
+| `location` | string | Resource Group location | Azure region for all resources |
+| `appName` | string | `tralivali` | Application name prefix |
+| `tags` | object | See template | Tags applied to all resources |
+
+### Storage Account Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `storageAccountName` | string | `{appName}{env}{uniqueString}` | Globally unique storage account name (3-24 chars, lowercase alphanumeric) |
+| `enableLifecyclePolicies` | bool | `true` | Enable automatic blob tiering policies |
+
+### Container Registry Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `containerRegistryName` | string | `{appName}{env}{uniqueString}` | Globally unique registry name (5-50 alphanumeric) |
+| `containerRegistrySku` | string | `Basic` (dev), `Standard` (prod) | Registry SKU (Basic, Standard, Premium) |
+
+### Container Apps Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `containerAppsEnvironmentName` | string | `{appName}-{env}-env` | Container Apps Environment name |
+| `apiContainerAppName` | string | `{appName}-{env}-api` | API Container App name |
+| `apiContainerImage` | string | `{registry}.azurecr.io/tralivali-api:latest` | API container image |
+| `apiMinReplicas` | int | `1` (dev), `2` (prod) | Minimum API replicas (0-30) |
+| `apiMaxReplicas` | int | `3` (dev), `10` (prod) | Maximum API replicas (1-30) |
+| `apiCpu` | string | `0.5` | API CPU cores |
+| `apiMemory` | string | `1.0Gi` | API memory allocation |
+
+### MongoDB Container Instance Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `mongoContainerName` | string | `{appName}-{env}-mongodb` | MongoDB Container Instance name |
+| `mongoContainerImage` | string | `mongo:latest` | MongoDB container image |
+| `mongoRootUsername` | string (secure) | **REQUIRED** | MongoDB root username |
+| `mongoRootPassword` | string (secure) | **REQUIRED** | MongoDB root password |
+| `mongoDatabaseName` | string | `tralivali` | MongoDB database name |
+| `mongoCpu` | string | `1.0` (dev), `2.0` (prod) | MongoDB CPU cores |
+| `mongoMemory` | string | `2.0` (dev), `4.0` (prod) | MongoDB memory (GB) |
+
+### Azure Communication Services Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `communicationServicesName` | string | `{appName}-{env}-acs` | Communication Services resource name |
+| `communicationServicesDataLocation` | string | `United States` | Data location (United States, Europe, etc.) |
+
+### Log Analytics Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `logAnalyticsWorkspaceName` | string | `{appName}-{env}-logs` | Log Analytics Workspace name |
+| `logAnalyticsSku` | string | `PerGB2018` | Pricing tier |
+| `logAnalyticsRetentionDays` | int | `30` (dev), `90` (prod) | Log retention period (30-730 days) |
+
+## Outputs
+
+After successful deployment, the template provides these outputs:
+
+### Log Analytics
+- `logAnalyticsWorkspaceId`: Workspace resource ID
+- `logAnalyticsWorkspaceName`: Workspace name
+- `logAnalyticsCustomerId`: Customer ID for log ingestion
+
+### Container Registry
+- `containerRegistryId`: Registry resource ID
+- `containerRegistryName`: Registry name
+- `containerRegistryLoginServer`: Registry login server URL
+
+### Container Apps
+- `containerAppsEnvironmentId`: Environment resource ID
+- `containerAppsEnvironmentName`: Environment name
+- `apiContainerAppId`: API app resource ID
+- `apiContainerAppName`: API app name
+- `apiContainerAppFqdn`: API public URL (HTTPS)
+
+### MongoDB
+- `mongoContainerInstanceId`: Container instance resource ID
+- `mongoContainerInstanceName`: Container instance name
+- `mongoContainerInstanceFqdn`: MongoDB FQDN
+- `mongoContainerInstanceIpAddress`: MongoDB public IP
+
+### Communication Services
+- `communicationServicesId`: Communication Services resource ID
+- `communicationServicesName`: Communication Services name
+
+### Storage
+- `storageAccountName`: Storage account name
+- `storageAccountId`: Storage account resource ID
+- `storageAccountPrimaryEndpoints`: Storage endpoints
+- `archivedMessagesContainerName`: Archive container name
+- `filesContainerName`: Files container name
+- `lifecyclePoliciesDeployed`: Whether lifecycle policies are enabled
+
+## Post-Deployment Steps
+
+### 1. Get Deployment Outputs
+
+```bash
+# Get all outputs
+az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs
+
+# Get specific output (e.g., API URL)
+az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs.apiContainerAppFqdn.value \
+  --output tsv
+```
+
+### 2. Push Docker Image to Container Registry
+
+```bash
+# Get registry credentials
+REGISTRY_NAME=$(az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs.containerRegistryName.value \
+  --output tsv)
+
+REGISTRY_SERVER=$(az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs.containerRegistryLoginServer.value \
+  --output tsv)
+
+# Login to registry
+az acr login --name $REGISTRY_NAME
+
+# Tag and push your image
+docker tag tralivali-api:latest $REGISTRY_SERVER/tralivali-api:latest
+docker push $REGISTRY_SERVER/tralivali-api:latest
+```
+
+### 3. Update Container App with New Image
+
+After pushing a new image, update the Container App:
+
+```bash
+# Update container app with new revision
+az containerapp update \
+  --name $(az deployment group show \
+    --resource-group $RESOURCE_GROUP \
+    --name main \
+    --query properties.outputs.apiContainerAppName.value \
+    --output tsv) \
+  --resource-group $RESOURCE_GROUP \
+  --image $REGISTRY_SERVER/tralivali-api:latest
+```
+
+### 4. Verify MongoDB Connection
+
+```bash
+# Get MongoDB FQDN
+MONGO_FQDN=$(az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs.mongoContainerInstanceFqdn.value \
+  --output tsv)
+
+# Connect to MongoDB (requires mongosh installed locally)
+mongosh "mongodb://admin:YourSecurePassword123!@$MONGO_FQDN:27017/tralivali?authSource=admin"
+```
+
+### 5. Get Communication Services Connection String
+
+```bash
+# Get Communication Services connection string
+az communication list-key \
+  --resource-group $RESOURCE_GROUP \
+  --name $(az deployment group show \
+    --resource-group $RESOURCE_GROUP \
+    --name main \
+    --query properties.outputs.communicationServicesName.value \
+    --output tsv) \
+  --query primaryConnectionString \
+  --output tsv
+```
+
+### 6. Access API Application
+
+```bash
+# Get API URL
+API_URL=$(az deployment group show \
+  --resource-group $RESOURCE_GROUP \
+  --name main \
+  --query properties.outputs.apiContainerAppFqdn.value \
+  --output tsv)
+
+echo "API URL: https://$API_URL"
+
+# Test API
+curl https://$API_URL/health
+```
+
+## Monitoring and Logs
+
+### View Container App Logs
+
+```bash
+# Stream Container App logs
+az containerapp logs show \
+  --name $(az deployment group show \
+    --resource-group $RESOURCE_GROUP \
+    --name main \
+    --query properties.outputs.apiContainerAppName.value \
+    --output tsv) \
+  --resource-group $RESOURCE_GROUP \
+  --follow
+
+# View logs in Log Analytics
+az monitor log-analytics query \
+  --workspace $(az deployment group show \
+    --resource-group $RESOURCE_GROUP \
+    --name main \
+    --query properties.outputs.logAnalyticsCustomerId.value \
+    --output tsv) \
+  --analytics-query "ContainerAppConsoleLogs_CL | where TimeGenerated > ago(1h) | order by TimeGenerated desc"
+```
+
+### View MongoDB Logs
+
+```bash
+# Get container instance logs
+az container logs \
+  --resource-group $RESOURCE_GROUP \
+  --name $(az deployment group show \
+    --resource-group $RESOURCE_GROUP \
+    --name main \
+    --query properties.outputs.mongoContainerInstanceName.value \
+    --output tsv)
+```
+
+## Deploy Only Lifecycle Policies (Optional)
 
 If you already have a storage account and only want to configure lifecycle policies:
 
@@ -60,20 +427,6 @@ az deployment group create \
   --resource-group $RESOURCE_GROUP \
   --template-file storage-lifecycle.bicep \
   --parameters storageAccountName=$STORAGE_ACCOUNT_NAME
-```
-
-### 4. Customize Parameters
-
-You can override default parameters:
-
-```bash
-az deployment group create \
-  --resource-group $RESOURCE_GROUP \
-  --template-file main.bicep \
-  --parameters environment=prod \
-  --parameters location=westus2 \
-  --parameters appName=myapp \
-  --parameters enableLifecyclePolicies=true
 ```
 
 ## Lifecycle Policy Configuration
