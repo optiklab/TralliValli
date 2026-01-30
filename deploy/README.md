@@ -216,6 +216,16 @@ For HTTPS support:
    docker compose -f docker-compose.prod.yml restart nginx
    ```
 
+**📚 For comprehensive SSL configuration including:**
+- Azure Container Apps managed certificates (automatic HTTPS)
+- Caddy reverse proxy with automatic Let's Encrypt
+- Certbot with Nginx for manual certificate management
+- DNS configuration (A, CNAME, TXT records)
+- Certificate renewal automation
+- Troubleshooting guide
+
+**See the complete [SSL Configuration Guide](../docs/SSL_CONFIGURATION.md)**
+
 ## Troubleshooting
 
 ### Service Won't Start

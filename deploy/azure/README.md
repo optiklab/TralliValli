@@ -419,6 +419,24 @@ echo "API URL: https://$API_URL"
 curl https://$API_URL/health
 ```
 
+### 7. Configure Custom Domain and SSL (Optional)
+
+For production deployments, you should configure a custom domain with managed SSL certificates.
+
+**📚 See the [SSL Configuration Guide](../../docs/SSL_CONFIGURATION.md)** for detailed instructions on:
+- Configuring Azure Container Apps managed certificates
+- DNS setup (A records, CNAME records, TXT validation)
+- Automatic certificate provisioning and renewal
+- HTTP to HTTPS redirection
+
+Quick steps:
+1. Add DNS records pointing to your Container App
+2. Add custom domain to Container App
+3. Enable managed certificate
+4. Azure automatically provisions and renews Let's Encrypt certificates
+
+See [Option 1: Azure Container Apps Managed Certificates](../../docs/SSL_CONFIGURATION.md#option-1-azure-container-apps-managed-certificates) in the SSL guide.
+
 ## Monitoring and Logs
 
 ### View Container App Logs
