@@ -458,16 +458,17 @@ public async Task<Stream> GetFileAsync(string fileId)
             rehydratePriority: RehydratePriority.High);
         
         // Return a response indicating the file needs to be rehydrated
-        throw new FileArchivedExceptionWithEstimate(
-            "File is being restored from archive. This may take up to 1 hour.",
-            estimatedTimeMinutes: 60);
+        throw new InvalidOperationException(
+            "File is being restored from archive storage. This may take up to 1 hour. " +
+            "Please try again later.");
     }
     
     // Check if rehydration is in progress
     if (properties.Value.ArchiveStatus != null)
     {
-        throw new FileRehydratingException(
-            "File is currently being restored from archive. Please try again in a few minutes.");
+        throw new InvalidOperationException(
+            "File is currently being restored from archive storage. " +
+            "Please try again in a few minutes.");
     }
     
     // Blob is available, download it

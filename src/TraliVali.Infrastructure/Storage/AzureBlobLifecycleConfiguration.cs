@@ -23,17 +23,17 @@ public class AzureBlobLifecycleConfiguration
     /// <summary>
     /// Number of days after which archive blobs are moved to Cool tier
     /// </summary>
-    public const int ArchiveCoolTierDays = 90;
+    public const int ArchivesCoolTierDays = 90;
 
     /// <summary>
     /// Number of days after which archive blobs are moved to Archive tier
     /// </summary>
-    public const int ArchiveArchiveTierDays = 180;
+    public const int ArchivesArchiveTierDays = 180;
 
     /// <summary>
     /// Prefix for archive blobs to apply lifecycle policies
     /// </summary>
-    public const string ArchivePrefix = "archives/";
+    public const string ArchivesPrefix = "archives/";
 
     /// <summary>
     /// Number of days after which file blobs are moved to Cool tier
