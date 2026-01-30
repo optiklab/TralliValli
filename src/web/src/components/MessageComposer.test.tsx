@@ -548,4 +548,88 @@ describe('MessageComposer', () => {
       expect(textarea.value).toBe('');
     });
   });
+
+  describe('Encryption Integration', () => {
+    it('encrypts message when encryption service is provided', async () => {
+      const mockEncryptionService = {
+        encryptMessage: vi.fn().mockResolvedValue({
+          success: true,
+          encryptedContent: '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+        }),
+      };
+
+      const user = userEvent.setup();
+      render(
+        <MessageComposer
+          {...defaultProps}
+          encryptionService={mockEncryptionService as any}
+        />
+      );
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Secret message{Enter}');
+
+      // Verify encryption was called
+      expect(mockEncryptionService.encryptMessage).toHaveBeenCalledWith(
+        'conv-1',
+        'Secret message'
+      );
+
+      // Verify onSendMessage was called with both plaintext and encrypted content
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Secret message',
+        '{"iv":"abc","ciphertext":"xyz","tag":"123"}',
+        undefined,
+        undefined
+      );
+    });
+
+    it('sends plaintext when encryption service is not provided', async () => {
+      const user = userEvent.setup();
+      render(<MessageComposer {...defaultProps} />);
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Regular message{Enter}');
+
+      // Verify onSendMessage was called with plaintext and undefined encrypted content
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Regular message',
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+
+    it('sends plaintext when encryption fails', async () => {
+      const mockEncryptionService = {
+        encryptMessage: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Encryption failed',
+          encryptedContent: '',
+        }),
+      };
+
+      const user = userEvent.setup();
+      render(
+        <MessageComposer
+          {...defaultProps}
+          encryptionService={mockEncryptionService as any}
+        />
+      );
+
+      const textarea = screen.getByPlaceholderText('Type a message...');
+      await user.type(textarea, 'Failed encryption{Enter}');
+
+      // Verify encryption was attempted
+      expect(mockEncryptionService.encryptMessage).toHaveBeenCalled();
+
+      // Verify message was sent with undefined encrypted content (fallback)
+      expect(mockOnSendMessage).toHaveBeenCalledWith(
+        'Failed encryption',
+        undefined,
+        undefined,
+        undefined
+      );
+    });
+  });
 });
