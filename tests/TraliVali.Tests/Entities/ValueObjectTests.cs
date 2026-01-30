@@ -93,13 +93,18 @@ public class DeviceTests
     [Fact]
     public void GivenDevice_WhenDefaultConstructorUsed_ThenPropertiesAreInitialized()
     {
-        // Arrange & Act
+        // Arrange
+        var beforeCreation = DateTime.UtcNow.AddSeconds(-1);
+        
+        // Act
         var device = new Device();
+        var afterCreation = DateTime.UtcNow.AddSeconds(1);
 
         // Assert
         Assert.Equal(string.Empty, device.DeviceId);
         Assert.Equal(string.Empty, device.DeviceName);
         Assert.Equal(string.Empty, device.DeviceType);
+        Assert.InRange(device.RegisteredAt, beforeCreation, afterCreation);
     }
 }
 
@@ -213,12 +218,17 @@ public class ParticipantTests
     [Fact]
     public void GivenParticipant_WhenDefaultConstructorUsed_ThenPropertiesAreInitialized()
     {
-        // Arrange & Act
+        // Arrange
+        var beforeCreation = DateTime.UtcNow.AddSeconds(-1);
+        
+        // Act
         var participant = new Participant();
+        var afterCreation = DateTime.UtcNow.AddSeconds(1);
 
         // Assert
         Assert.Equal(string.Empty, participant.UserId);
         Assert.Equal("member", participant.Role);
+        Assert.InRange(participant.JoinedAt, beforeCreation, afterCreation);
     }
 }
 
@@ -287,11 +297,16 @@ public class MessageReadStatusTests
     [Fact]
     public void GivenMessageReadStatus_WhenDefaultConstructorUsed_ThenPropertiesAreInitialized()
     {
-        // Arrange & Act
+        // Arrange
+        var beforeCreation = DateTime.UtcNow.AddSeconds(-1);
+        
+        // Act
         var readStatus = new MessageReadStatus();
+        var afterCreation = DateTime.UtcNow.AddSeconds(1);
 
         // Assert
         Assert.Equal(string.Empty, readStatus.UserId);
+        Assert.InRange(readStatus.ReadAt, beforeCreation, afterCreation);
     }
 
     [Fact]
