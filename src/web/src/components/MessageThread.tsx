@@ -17,12 +17,14 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useConversationStore } from '@/stores/useConversationStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import type { Message } from '@/stores/useConversationStore';
+import { MessageEncryptionService } from '@/services/messageEncryption';
 
 export interface MessageThreadProps {
   conversationId: string;
   onLoadMore?: (cursor?: string) => Promise<void>;
   hasMore?: boolean;
   typingUsers?: Array<{ userId: string; userName: string }>;
+  encryptionService?: MessageEncryptionService;
 }
 
 interface MessageItemProps {
@@ -31,9 +33,50 @@ interface MessageItemProps {
   senderName?: string;
   showAvatar?: boolean;
   onReply?: (messageId: string) => void;
+  conversationId: string;
+  encryptionService?: MessageEncryptionService;
 }
 
-function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }: MessageItemProps) {
+function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply, conversationId, encryptionService }: MessageItemProps) {
+  const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
+  const [decryptionError, setDecryptionError] = useState<boolean>(false);
+
+  // Decrypt message content on mount or when message changes
+  useEffect(() => {
+    const decryptContent = async () => {
+      if (!message.encryptedContent || message.encryptedContent.trim() === '') {
+        // If no encrypted content, use plaintext content (backward compatibility)
+        setDecryptedContent(message.content || '');
+        return;
+      }
+
+      // If we have encryption service, decrypt the message
+      if (encryptionService) {
+        const result = await encryptionService.decryptMessage(
+          conversationId,
+          message.encryptedContent
+        );
+
+        if (result.success) {
+          setDecryptedContent(result.content);
+          setDecryptionError(false);
+        } else {
+          // Decryption failed - check if we have plaintext fallback
+          if (message.content) {
+            setDecryptedContent(message.content);
+          } else {
+            setDecryptionError(true);
+          }
+        }
+      } else {
+        // No encryption service - use plaintext if available
+        setDecryptedContent(message.content || message.encryptedContent);
+      }
+    };
+
+    decryptContent();
+  }, [message.id, message.encryptedContent, message.content, conversationId, encryptionService]);
+
   const getReadByCount = () => {
     // Don't count the sender in read receipts
     return message.readBy.filter((r) => r.userId !== message.senderId).length;
@@ -60,7 +103,17 @@ function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply }:
       return <span className="italic text-gray-400">Message deleted</span>;
     }
 
-    const content = message.content || message.encryptedContent;
+    // Show decryption error placeholder if decryption failed
+    if (decryptionError) {
+      return (
+        <span className="italic text-gray-400" title="This message could not be decrypted">
+          [Unable to decrypt message]
+        </span>
+      );
+    }
+
+    // Use decrypted content, or show loading state
+    const content = decryptedContent !== null ? decryptedContent : '';
 
     // Check if message has attachments (file message)
     if (message.attachments && message.attachments.length > 0) {
@@ -205,6 +258,7 @@ export function MessageThread({
   onLoadMore,
   hasMore = false,
   typingUsers = [],
+  encryptionService,
 }: MessageThreadProps) {
   const messagesFromStore = useConversationStore((state) => state.messages[conversationId]);
   const messages = useMemo(() => messagesFromStore || [], [messagesFromStore]);
@@ -345,6 +399,8 @@ export function MessageThread({
             senderName={getSenderName(message.senderId)}
             showAvatar={shouldShowAvatar(index)}
             onReply={handleReply}
+            conversationId={conversationId}
+            encryptionService={encryptionService}
           />
         ))}
 

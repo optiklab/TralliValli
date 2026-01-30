@@ -50,3 +50,9 @@ export {
   type KeyRotationRecord,
   type ConversationKeyInfo,
 } from './keyManagement';
+
+export {
+  MessageEncryptionService,
+  type MessageEncryptionResult,
+  type MessageDecryptionResult,
+} from './messageEncryption';
