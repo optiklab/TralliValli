@@ -45,10 +45,7 @@ export class MessageEncryptionService {
    * @param content - The plaintext message content
    * @returns Encryption result with encrypted content or error
    */
-  async encryptMessage(
-    conversationId: string,
-    content: string
-  ): Promise<MessageEncryptionResult> {
+  async encryptMessage(conversationId: string, content: string): Promise<MessageEncryptionResult> {
     try {
       // Get the conversation key
       const conversationKey = await this.keyManagementService.getConversationKey(conversationId);
@@ -116,7 +113,7 @@ export class MessageEncryptionService {
       let encrypted: EncryptedData;
       try {
         encrypted = JSON.parse(encryptedContent) as EncryptedData;
-      } catch (parseError) {
+      } catch {
         return {
           content: '',
           success: false,
@@ -154,9 +151,9 @@ export class MessageEncryptionService {
 
   /**
    * Encrypt a message or return the plaintext if encryption is not available
-   * 
+   *
    * This is a helper method for scenarios where encryption is optional (e.g., during migration)
-   * 
+   *
    * @param conversationId - The conversation ID
    * @param content - The plaintext message content
    * @returns Encryption result
@@ -166,7 +163,7 @@ export class MessageEncryptionService {
     content: string
   ): Promise<MessageEncryptionResult> {
     const result = await this.encryptMessage(conversationId, content);
-    
+
     // If encryption fails, return the plaintext (for backward compatibility)
     if (!result.success) {
       return {
@@ -175,15 +172,15 @@ export class MessageEncryptionService {
         error: result.error,
       };
     }
-    
+
     return result;
   }
 
   /**
    * Decrypt a message or return a placeholder on failure
-   * 
+   *
    * This is a helper method that always returns a displayable string
-   * 
+   *
    * @param conversationId - The conversation ID
    * @param encryptedContent - The encrypted message content
    * @param fallbackPlaintext - Optional plaintext fallback (for messages sent before encryption)
@@ -200,11 +197,11 @@ export class MessageEncryptionService {
     }
 
     const result = await this.decryptMessage(conversationId, encryptedContent);
-    
+
     if (result.success) {
       return result.content;
     }
-    
+
     // If decryption fails, return placeholder
     return '[Unable to decrypt message]';
   }

@@ -26,7 +26,12 @@ import { MessageEncryptionService } from '@/services/messageEncryption';
 
 export interface MessageComposerProps {
   conversationId: string;
-  onSendMessage: (content: string, encryptedContent?: string, files?: File[], replyToId?: string) => void;
+  onSendMessage: (
+    content: string,
+    encryptedContent?: string,
+    files?: File[],
+    replyToId?: string
+  ) => void;
   onTyping?: (isTyping: boolean) => void;
   replyTo?: {
     messageId: string;
@@ -179,7 +184,16 @@ export function MessageComposer({
 
     // Focus back on textarea
     textareaRef.current?.focus();
-  }, [disabled, message, attachedFiles, onSendMessage, replyTo, handleTypingIndicator, conversationId, encryptionService]);
+  }, [
+    disabled,
+    message,
+    attachedFiles,
+    onSendMessage,
+    replyTo,
+    handleTypingIndicator,
+    conversationId,
+    encryptionService,
+  ]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Enter to send (without Shift)

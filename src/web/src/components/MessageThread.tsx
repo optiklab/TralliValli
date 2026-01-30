@@ -37,7 +37,15 @@ interface MessageItemProps {
   encryptionService?: MessageEncryptionService;
 }
 
-function MessageItem({ message, isOwnMessage, senderName, showAvatar, onReply, conversationId, encryptionService }: MessageItemProps) {
+function MessageItem({
+  message,
+  isOwnMessage,
+  senderName,
+  showAvatar,
+  onReply,
+  conversationId,
+  encryptionService,
+}: MessageItemProps) {
   const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [decryptionError, setDecryptionError] = useState<boolean>(false);
 

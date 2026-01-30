@@ -2,7 +2,7 @@
  * Tests for MessageEncryptionService
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MessageEncryptionService } from './messageEncryption';
 import { KeyManagementService } from './keyManagement';
 import { generateKey } from './aesGcmEncryption';
@@ -113,10 +113,7 @@ describe('MessageEncryptionService', () => {
     });
 
     it('should return error for invalid JSON', async () => {
-      const result = await encryptionService.decryptMessage(
-        'test-conversation',
-        'invalid json'
-      );
+      const result = await encryptionService.decryptMessage('test-conversation', 'invalid json');
 
       expect(result.success).toBe(false);
       expect(result.content).toBe('');
@@ -124,10 +121,7 @@ describe('MessageEncryptionService', () => {
     });
 
     it('should return error for incomplete encrypted data', async () => {
-      const result = await encryptionService.decryptMessage(
-        'test-conversation',
-        '{"iv":"test"}'
-      );
+      const result = await encryptionService.decryptMessage('test-conversation', '{"iv":"test"}');
 
       expect(result.success).toBe(false);
       expect(result.content).toBe('');
