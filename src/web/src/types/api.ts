@@ -221,3 +221,9 @@ export interface UploadProgress {
   total: number;
   percentage: number;
 }
+
+export interface GenerateDownloadUrlResponse {
+  fileId: string;
+  downloadUrl: string;
+  fileName: string;
+}

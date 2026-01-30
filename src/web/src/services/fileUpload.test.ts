@@ -550,6 +550,106 @@ describe('FileUploadService', () => {
     });
   });
 
+  describe('encryption support', () => {
+    it('should encrypt file before upload when encryption service is provided', async () => {
+      const mockFile = new File(['test content'], 'test.txt', {
+        type: 'text/plain',
+      });
+
+      const mockPresignedUrlResponse: PresignedUrlResponse = {
+        uploadUrl: 'https://storage.example.com/upload',
+        fileId: 'file-123',
+        blobPath: 'files/file-123.txt',
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+      };
+
+      const mockFileMetadata: FileMetadata = {
+        id: 'file-123',
+        conversationId: 'conv-123',
+        uploaderId: 'user-123',
+        fileName: 'test.txt',
+        mimeType: 'application/octet-stream', // Should be octet-stream for encrypted files
+        size: 100,
+        blobPath: 'files/file-123.txt',
+        createdAt: new Date().toISOString(),
+      };
+
+      vi.mocked(apiClient.getPresignedUrl).mockResolvedValue(mockPresignedUrlResponse);
+      vi.mocked(apiClient.getFileMetadata).mockResolvedValue(mockFileMetadata);
+
+      mockXHR.addEventListener.mockImplementation((event, handler) => {
+        if (event === 'load') {
+          setTimeout(() => handler(), 0);
+        }
+      });
+
+      // Mock encryption service
+      const mockEncryptionService = {
+        encryptFile: vi.fn().mockResolvedValue({
+          success: true,
+          encryptedBlob: new Blob(['encrypted content']),
+          metadata: {
+            iv: 'test-iv',
+            tag: 'test-tag',
+            originalSize: 12,
+            encryptedSize: 100,
+          },
+        }),
+        decryptFile: vi.fn(),
+      };
+
+      const result = await fileUploadService.uploadFile({
+        conversationId: 'conv-123',
+        file: mockFile,
+        encryptionService: mockEncryptionService as never,
+      });
+
+      expect(mockEncryptionService.encryptFile).toHaveBeenCalledWith(
+        'conv-123',
+        mockFile,
+        expect.any(Function)
+      );
+      expect(result.encryptionMetadata).toBeDefined();
+      expect(result.encryptionMetadata?.iv).toBe('test-iv');
+      expect(result.encryptionMetadata?.tag).toBe('test-tag');
+      expect(apiClient.getPresignedUrl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mimeType: 'application/octet-stream',
+        })
+      );
+    });
+
+    it('should handle encryption errors', async () => {
+      const mockFile = new File(['test content'], 'test.txt', {
+        type: 'text/plain',
+      });
+
+      // Mock encryption service that fails
+      const mockEncryptionService = {
+        encryptFile: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Encryption failed',
+          encryptedBlob: new Blob(),
+          metadata: {
+            iv: '',
+            tag: '',
+            originalSize: 0,
+            encryptedSize: 0,
+          },
+        }),
+        decryptFile: vi.fn(),
+      };
+
+      await expect(
+        fileUploadService.uploadFile({
+          conversationId: 'conv-123',
+          file: mockFile,
+          encryptionService: mockEncryptionService as never,
+        })
+      ).rejects.toThrow('Encryption failed');
+    });
+  });
+
   describe('singleton instance', () => {
     it('should export a singleton instance', () => {
       expect(fileUploadService).toBeInstanceOf(FileUploadService);
