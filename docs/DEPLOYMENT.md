@@ -493,13 +493,22 @@ Configure application settings in Container App.
    openssl rsa -in private.pem -outform PEM -pubout -out public.pem
    
    # Read keys (include BEGIN/END lines)
-   JWT_PRIVATE_KEY=$(cat private.pem | sed ':a;N;$!ba;s/\n/\\n/g')
-   JWT_PUBLIC_KEY=$(cat public.pem | sed ':a;N;$!ba;s/\n/\\n/g')
+   JWT_PRIVATE_KEY=$(cat private.pem | awk '{printf "%s\\n", $0}' | sed '$s/\\n$//')
+   JWT_PUBLIC_KEY=$(cat public.pem | awk '{printf "%s\\n", $0}' | sed '$s/\\n$//')
    
    # Generate invite signing key
    INVITE_SIGNING_KEY=$(openssl rand -base64 32)
    
-   # Clean up key files (keys are stored in variables)
+   # ⚠️ IMPORTANT: Save these values securely BEFORE deleting key files!
+   echo "JWT_PRIVATE_KEY=$JWT_PRIVATE_KEY"
+   echo "JWT_PUBLIC_KEY=$JWT_PUBLIC_KEY"
+   echo "INVITE_SIGNING_KEY=$INVITE_SIGNING_KEY"
+   echo ""
+   echo "Copy these values to a secure location (password manager, Azure Key Vault, etc.)"
+   echo "Press Enter after you have securely saved these values..."
+   read
+   
+   # Clean up key files only after values are saved
    rm private.pem public.pem
    ```
 
@@ -694,8 +703,8 @@ TraliVali uses an invite-only system. Here's how to create the first admin user.
    ```json
    {
      "inviteLink": "https://app.yourdomain.com/register?token=xyz789abc123...",
-     "qrCode": "iVBORw0KGgoAAAANSUhEUgAA...",  # Base64 QR code
-     "expiresAt": "2024-02-06T12:00:00Z"
+     "qrCode": "iVBORw0KGgoAAAANSUhEUgAA...",
+     "expiresAt": "2026-02-06T12:00:00Z"
    }
    ```
 
@@ -836,7 +845,10 @@ Configure DNS to point to your server.
    rm private.pem public.pem
    ```
 
-   **Note:** Replace `\n` with actual newlines when pasting into `.env.prod`.
+   **Note:** The keys should be stored with literal `\n` characters (not actual newlines) in the `.env.prod` file. The application will parse these correctly. Example format:
+   ```bash
+   JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----"
+   ```
 
 5. **Generate Invite Signing Key**:
 
@@ -1052,8 +1064,8 @@ BACKUP_CONTAINER_NAME=tralivali-backups
 
    **Expected Output:**
    ```
-   notBefore=Jan 30 12:00:00 2024 GMT
-   notAfter=Apr 30 12:00:00 2024 GMT
+   notBefore=Jan 30 12:00:00 2026 GMT
+   notAfter=Apr 30 12:00:00 2026 GMT
    issuer=C = US, O = Let's Encrypt, CN = R3
    ```
 
@@ -1149,12 +1161,15 @@ BACKUP_CONTAINER_NAME=tralivali-backups
 2. **Check Resource Usage**:
 
    ```bash
-   # Container App metrics
+   # Container App metrics (example for last 24 hours)
+   START_TIME=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+   END_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+   
    az monitor metrics list \
      --resource "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$API_APP_NAME" \
      --metric "Requests" \
-     --start-time 2024-01-30T00:00:00Z \
-     --end-time 2024-01-30T23:59:59Z
+     --start-time $START_TIME \
+     --end-time $END_TIME
    ```
 
 3. **View MongoDB Logs**:
@@ -1214,12 +1229,14 @@ BACKUP_CONTAINER_NAME=tralivali-backups
 **MongoDB Backup:**
 
 ```bash
-# Azure
-mongosh "$MONGODB_CONNECTION" --eval "db.runCommand({backup: 1})"
+# Azure (using mongodump)
+mongosh "$MONGODB_CONNECTION" --eval "use admin; db.runCommand({dbStats: 1})"
+# Then use mongodump (install MongoDB Database Tools)
+mongodump --uri="$MONGODB_CONNECTION" --out=./backups/$(date +%Y%m%d)
 
 # Docker Compose
 docker exec tralivali-mongodb mongodump \
-  -u admin -p YOUR_PASSWORD \
+  -u admin -p YOUR_STRONG_MONGO_PASSWORD_HERE \
   --authenticationDatabase admin \
   --out /data/backup/$(date +%Y%m%d)
 
@@ -1229,18 +1246,25 @@ docker cp tralivali-mongodb:/data/backup ./backups/
 
 **Automated Backup Script:**
 
-Create `/opt/tralivali-backup.sh`:
+Create the backup script at `/opt/tralivali-backup.sh`:
 
 ```bash
 #!/bin/bash
+# MongoDB Backup Script for TraliVali
+# Save this file as: /opt/tralivali-backup.sh
+
 BACKUP_DIR="/opt/backups/tralivali"
 DATE=$(date +%Y%m%d-%H%M%S)
+
+# Load MongoDB password from environment or set it here
+# Replace with your actual MongoDB password
+MONGO_PASSWORD="${MONGO_ROOT_PASSWORD:-YOUR_STRONG_MONGO_PASSWORD_HERE}"
 
 mkdir -p $BACKUP_DIR
 
 # Backup MongoDB
 docker exec tralivali-mongodb mongodump \
-  -u admin -p YOUR_PASSWORD \
+  -u admin -p "$MONGO_PASSWORD" \
   --authenticationDatabase admin \
   --gzip \
   --archive=/data/backup/mongodb-$DATE.gz
@@ -1253,11 +1277,15 @@ find $BACKUP_DIR -name "mongodb-*.gz" -mtime +30 -delete
 echo "Backup completed: $BACKUP_DIR/mongodb-$DATE.gz"
 ```
 
-Add to crontab:
+Make executable and add to crontab:
 ```bash
 chmod +x /opt/tralivali-backup.sh
+
+# Edit crontab
 crontab -e
-# Add: 0 2 * * * /opt/tralivali-backup.sh >> /var/log/tralivali-backup.log 2>&1
+
+# Add this line (runs daily at 2 AM):
+# 0 2 * * * /opt/tralivali-backup.sh >> /var/log/tralivali-backup.log 2>&1
 ```
 
 ### Certificate Renewal
