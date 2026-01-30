@@ -110,10 +110,12 @@ export async function encrypt(
     const ciphertextWithTag = await crypto.subtle.encrypt(
       {
         name: AES_ALGORITHM,
-        iv: iv,
+        // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
+        iv,
         tagLength: TAG_LENGTH,
       },
       key,
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       plaintextBytes
     );
 
@@ -202,10 +204,12 @@ export async function decrypt(
     const plaintextBuffer = await crypto.subtle.decrypt(
       {
         name: AES_ALGORITHM,
-        iv: iv,
+        // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
+        iv,
         tagLength: TAG_LENGTH,
       },
       key,
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       ciphertextWithTag
     );
 
@@ -278,8 +282,10 @@ export async function importKey(rawKey: Uint8Array, extractable = false): Promis
       throw new Error(`Invalid key length: expected 32 bytes for AES-256, got ${rawKey.length}`);
     }
 
+    // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
     return await crypto.subtle.importKey(
       'raw',
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       rawKey,
       {
         name: AES_ALGORITHM,
@@ -339,9 +345,9 @@ export async function encryptToBase64(
 ): Promise<EncryptedData> {
   const result = await encrypt(key, plaintext);
   return {
-    iv: arrayBufferToBase64(result.iv.buffer),
-    ciphertext: arrayBufferToBase64(result.ciphertext.buffer),
-    tag: arrayBufferToBase64(result.tag.buffer),
+    iv: arrayBufferToBase64(result.iv.buffer as ArrayBuffer),
+    ciphertext: arrayBufferToBase64(result.ciphertext.buffer as ArrayBuffer),
+    tag: arrayBufferToBase64(result.tag.buffer as ArrayBuffer),
   };
 }
 

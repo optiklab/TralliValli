@@ -205,7 +205,7 @@ export class CryptoKeyExchange {
       const combined = new Uint8Array(passwordBytes.length + salt.length);
       combined.set(passwordBytes, 0);
       combined.set(salt, passwordBytes.length);
-      key = _sodium.crypto_generichash(keyBytes, combined);
+      key = _sodium.crypto_generichash(keyBytes, combined, null);
     }
 
     // Encrypt the private key
@@ -276,7 +276,7 @@ export class CryptoKeyExchange {
       const combinedInput = new Uint8Array(passwordBytes.length + salt.length);
       combinedInput.set(passwordBytes, 0);
       combinedInput.set(salt, passwordBytes.length);
-      key = _sodium.crypto_generichash(keyBytes, combinedInput);
+      key = _sodium.crypto_generichash(keyBytes, combinedInput, null);
     }
 
     // Decrypt the private key

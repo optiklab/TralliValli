@@ -191,6 +191,7 @@ export class KeyManagementService {
     const masterKey = await crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
+        // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
         salt: keySalt,
         iterations: 100000,
         hash: 'SHA-256',
@@ -230,6 +231,7 @@ export class KeyManagementService {
     // Import shared secret as key material
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       sharedSecret,
       { name: 'HKDF' },
       false,
@@ -285,10 +287,12 @@ export class KeyManagementService {
     const encryptedBuffer = await crypto.subtle.encrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
+        iv,
         tagLength: 128,
       },
       masterKey,
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       rawKey
     );
 
@@ -331,10 +335,12 @@ export class KeyManagementService {
     const decryptedBuffer = await crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv: iv,
+        // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
+        iv,
         tagLength: 128,
       },
       masterKey,
+      // @ts-ignore - TypeScript 5.x strict mode has issues with Uint8Array<ArrayBufferLike> vs BufferSource
       combined
     );
 
