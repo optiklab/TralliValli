@@ -56,3 +56,18 @@ export {
   type MessageEncryptionResult,
   type MessageDecryptionResult,
 } from './messageEncryption';
+
+export {
+  FileEncryptionService,
+  type FileEncryptionProgress,
+  type EncryptFileResult,
+  type DecryptFileResult,
+  type EncryptedFileMetadata,
+} from './fileEncryption';
+
+export {
+  FileDownloadService,
+  type DownloadProgress,
+  type DownloadOptions,
+} from './fileDownload';
+

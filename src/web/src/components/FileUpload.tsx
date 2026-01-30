@@ -10,8 +10,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { fileUploadService, type UploadOptions, type UploadResult } from '@/services';
+import { FileEncryptionService } from '@/services/fileEncryption';
+import { KeyManagementService } from '@/services/keyManagement';
 import type { UploadProgress } from '@/types/api';
 import { formatFileSize } from '@/utils/fileUtils';
+
+// Create singleton instances for encryption (optional)
+const keyManagementService = new KeyManagementService();
+const fileEncryptionService = new FileEncryptionService(keyManagementService);
 
 export interface FileUploadProps {
   file: File;
@@ -19,6 +25,7 @@ export interface FileUploadProps {
   onUploadComplete?: (result: UploadResult) => void;
   onUploadError?: (error: Error) => void;
   onCancel?: () => void;
+  enableEncryption?: boolean;
 }
 
 export function FileUpload({
@@ -27,6 +34,7 @@ export function FileUpload({
   onUploadComplete,
   onUploadError,
   onCancel,
+  enableEncryption = false,
 }: FileUploadProps) {
   const [progress, setProgress] = useState<UploadProgress>({ loaded: 0, total: 0, percentage: 0 });
   const [isUploading, setIsUploading] = useState(true);
@@ -43,6 +51,7 @@ export function FileUpload({
           file,
           onProgress: setProgress,
           signal: abortController.signal,
+          encryptionService: enableEncryption ? fileEncryptionService : undefined,
         };
 
         const result = await fileUploadService.uploadFile(options);
@@ -72,7 +81,7 @@ export function FileUpload({
         abortController.abort();
       }
     };
-  }, [file, conversationId, onUploadComplete, onUploadError, abortController]);
+  }, [file, conversationId, onUploadComplete, onUploadError, abortController, enableEncryption]);
 
   const handleCancel = () => {
     abortController.abort();
