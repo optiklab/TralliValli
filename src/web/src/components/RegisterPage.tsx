@@ -21,7 +21,11 @@ export function RegisterPage({
   onSuccess,
   onError,
 }: RegisterPageProps) {
-  const [inviteToken, setInviteToken] = useState(initialInviteToken || '');
+  // Read invite token from URL query parameter if not provided via props
+  const urlParams = new URLSearchParams(window.location.search);
+  const inviteFromUrl = urlParams.get('invite');
+  
+  const [inviteToken, setInviteToken] = useState(initialInviteToken || inviteFromUrl || '');
   const [email, setEmail] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
