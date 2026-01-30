@@ -4,7 +4,11 @@ This directory contains Bicep templates for deploying TraliVali infrastructure t
 
 ## Files
 
-- **main.bicep**: Main infrastructure template that provisions:
+- **main-with-rg.bicep**: Complete subscription-level deployment template that provisions:
+  - **Resource Group**: Creates a new resource group for all resources
+  - All infrastructure resources (via main.bicep module)
+
+- **main.bicep**: Main infrastructure template (resource group scope) that provisions:
   - **Log Analytics Workspace**: Centralized logging and monitoring
   - **Container Registry**: Private Docker image registry with admin access
   - **Container Apps Environment**: Managed environment for containerized applications
@@ -19,6 +23,11 @@ This directory contains Bicep templates for deploying TraliVali infrastructure t
 - **storage-lifecycle.bicep**: Blob storage lifecycle management policies module
   - Configures automatic tiering based on blob age
   - Separate policies for archives/ and files/ prefixes
+
+- **parameters.dev.json**: Example parameter file for development environment (resource group scope)
+- **parameters.prod.json**: Example parameter file for production environment (resource group scope)
+- **parameters-with-rg.dev.json**: Example parameter file for development with resource group creation (subscription scope)
+- **parameters-with-rg.prod.json**: Example parameter file for production with resource group creation (subscription scope)
 
 ## Infrastructure Overview
 
@@ -72,7 +81,32 @@ mongoRootPassword="YourSecurePassword123!"  # Use strong password
 
 ## Deployment
 
-### 1. Create Resource Group
+There are two deployment options:
+
+### Option A: Complete Deployment (Subscription-level with Resource Group)
+
+This option creates the resource group and all infrastructure in a single deployment.
+
+```bash
+# Set variables
+LOCATION="eastus"
+ENVIRONMENT="dev"  # or staging, prod
+
+# Deploy everything including resource group
+az deployment sub create \
+  --location $LOCATION \
+  --template-file main-with-rg.bicep \
+  --parameters environment=$ENVIRONMENT \
+  --parameters location=$LOCATION \
+  --parameters mongoRootUsername="admin" \
+  --parameters mongoRootPassword="YourSecurePassword123!"
+```
+
+### Option B: Deploy to Existing Resource Group
+
+This option requires you to create the resource group first.
+
+#### 1. Create Resource Group
 
 ```bash
 # Set variables
@@ -86,7 +120,7 @@ az group create \
   --location $LOCATION
 ```
 
-### 2. Deploy Complete Infrastructure
+#### 2. Deploy Complete Infrastructure
 
 ```bash
 # Deploy main template with required parameters
@@ -99,7 +133,7 @@ az deployment group create \
   --parameters mongoRootPassword="YourSecurePassword123!"
 ```
 
-### 3. Deploy with Parameter File (Recommended for Production)
+#### 3. Deploy with Parameter File (Recommended for Production)
 
 Create a parameter file `parameters.prod.json`:
 
@@ -141,7 +175,16 @@ Create a parameter file `parameters.prod.json`:
 }
 ```
 
-Then deploy:
+Then deploy (Option A with Resource Group):
+
+```bash
+az deployment sub create \
+  --location $LOCATION \
+  --template-file main-with-rg.bicep \
+  --parameters @parameters.prod.json
+```
+
+Or deploy (Option B to existing Resource Group):
 
 ```bash
 az deployment group create \
@@ -150,7 +193,7 @@ az deployment group create \
   --parameters @parameters.prod.json
 ```
 
-### 4. Customize Parameters
+#### 4. Customize Parameters
 
 You can override any default parameters:
 

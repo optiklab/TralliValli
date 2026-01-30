@@ -1,0 +1,973 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "10252512765760652659"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "eastus",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "tralivali",
+      "metadata": {
+        "description": "Application name prefix"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-{1}-rg', parameters('appName'), parameters('environment'))]",
+      "metadata": {
+        "description": "Resource Group name"
+      }
+    },
+    "mongoRootUsername": {
+      "type": "securestring",
+      "metadata": {
+        "description": "MongoDB root username"
+      }
+    },
+    "mongoRootPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "MongoDB root password"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "application": "TraliVali",
+        "environment": "[parameters('environment')]",
+        "managedBy": "Bicep"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "infrastructure-deployment",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "environment": {
+            "value": "[parameters('environment')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "appName": {
+            "value": "[parameters('appName')]"
+          },
+          "mongoRootUsername": {
+            "value": "[parameters('mongoRootUsername')]"
+          },
+          "mongoRootPassword": {
+            "value": "[parameters('mongoRootPassword')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "1472899311814612524"
+            }
+          },
+          "parameters": {
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "allowedValues": [
+                "dev",
+                "staging",
+                "prod"
+              ],
+              "metadata": {
+                "description": "Environment name (dev, staging, prod)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Location for all resources"
+              }
+            },
+            "appName": {
+              "type": "string",
+              "defaultValue": "tralivali",
+              "metadata": {
+                "description": "Application name prefix"
+              }
+            },
+            "storageAccountName": {
+              "type": "string",
+              "defaultValue": "[format('{0}{1}{2}', parameters('appName'), parameters('environment'), uniqueString(resourceGroup().id))]",
+              "minLength": 3,
+              "maxLength": 24,
+              "metadata": {
+                "description": "Storage account name (must be globally unique, 3-24 characters, lowercase letters and numbers only)"
+              }
+            },
+            "enableLifecyclePolicies": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable lifecycle policies for blob storage"
+              }
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "defaultValue": "[format('{0}{1}{2}', parameters('appName'), parameters('environment'), uniqueString(resourceGroup().id))]",
+              "minLength": 5,
+              "maxLength": 50,
+              "metadata": {
+                "description": "Container Registry name (must be globally unique, 5-50 alphanumeric characters)"
+              }
+            },
+            "containerRegistrySku": {
+              "type": "string",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), 'Standard', 'Basic')]",
+              "allowedValues": [
+                "Basic",
+                "Standard",
+                "Premium"
+              ],
+              "metadata": {
+                "description": "Container Registry SKU (Basic, Standard, or Premium)"
+              }
+            },
+            "containerAppsEnvironmentName": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-env', parameters('appName'), parameters('environment'))]",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              }
+            },
+            "apiContainerAppName": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-api', parameters('appName'), parameters('environment'))]",
+              "metadata": {
+                "description": "API Container App name"
+              }
+            },
+            "apiContainerImage": {
+              "type": "string",
+              "defaultValue": "[format('{0}.azurecr.io/tralivali-api:latest', parameters('containerRegistryName'))]",
+              "metadata": {
+                "description": "API container image (format: registry/image:tag)"
+              }
+            },
+            "apiMinReplicas": {
+              "type": "int",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), 2, 1)]",
+              "minValue": 0,
+              "maxValue": 30,
+              "metadata": {
+                "description": "Minimum number of API replicas"
+              }
+            },
+            "apiMaxReplicas": {
+              "type": "int",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), 10, 3)]",
+              "minValue": 1,
+              "maxValue": 30,
+              "metadata": {
+                "description": "Maximum number of API replicas"
+              }
+            },
+            "apiCpu": {
+              "type": "string",
+              "defaultValue": "0.5",
+              "metadata": {
+                "description": "API CPU allocation (in cores)"
+              }
+            },
+            "apiMemory": {
+              "type": "string",
+              "defaultValue": "1.0Gi",
+              "metadata": {
+                "description": "API memory allocation (in Gi)"
+              }
+            },
+            "mongoContainerName": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-mongodb', parameters('appName'), parameters('environment'))]",
+              "metadata": {
+                "description": "MongoDB Container Instance name"
+              }
+            },
+            "mongoContainerImage": {
+              "type": "string",
+              "defaultValue": "mongo:latest",
+              "metadata": {
+                "description": "MongoDB container image"
+              }
+            },
+            "mongoRootUsername": {
+              "type": "securestring",
+              "metadata": {
+                "description": "MongoDB root username"
+              }
+            },
+            "mongoRootPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "MongoDB root password"
+              }
+            },
+            "mongoDatabaseName": {
+              "type": "string",
+              "defaultValue": "tralivali",
+              "metadata": {
+                "description": "MongoDB database name"
+              }
+            },
+            "mongoCpu": {
+              "type": "string",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), '2.0', '1.0')]",
+              "metadata": {
+                "description": "MongoDB CPU allocation (in cores)"
+              }
+            },
+            "mongoMemory": {
+              "type": "string",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), '4.0', '2.0')]",
+              "metadata": {
+                "description": "MongoDB memory allocation (in Gi)"
+              }
+            },
+            "communicationServicesName": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-acs', parameters('appName'), parameters('environment'))]",
+              "metadata": {
+                "description": "Azure Communication Services resource name"
+              }
+            },
+            "communicationServicesDataLocation": {
+              "type": "string",
+              "defaultValue": "United States",
+              "allowedValues": [
+                "Africa",
+                "Asia Pacific",
+                "Australia",
+                "Brazil",
+                "Canada",
+                "Europe",
+                "France",
+                "Germany",
+                "India",
+                "Japan",
+                "Korea",
+                "Norway",
+                "Switzerland",
+                "UAE",
+                "UK",
+                "United States"
+              ],
+              "metadata": {
+                "description": "Azure Communication Services data location"
+              }
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "defaultValue": "[format('{0}-{1}-logs', parameters('appName'), parameters('environment'))]",
+              "metadata": {
+                "description": "Log Analytics Workspace name"
+              }
+            },
+            "logAnalyticsSku": {
+              "type": "string",
+              "defaultValue": "PerGB2018",
+              "allowedValues": [
+                "PerGB2018",
+                "Free",
+                "Standalone",
+                "PerNode",
+                "Standard",
+                "Premium"
+              ],
+              "metadata": {
+                "description": "Log Analytics Workspace SKU"
+              }
+            },
+            "logAnalyticsRetentionDays": {
+              "type": "int",
+              "defaultValue": "[if(equals(parameters('environment'), 'prod'), 90, 30)]",
+              "minValue": 30,
+              "maxValue": 730,
+              "metadata": {
+                "description": "Log Analytics data retention in days (30-730)"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {
+                "application": "TraliVali",
+                "environment": "[parameters('environment')]",
+                "managedBy": "Bicep"
+              },
+              "metadata": {
+                "description": "Tags to apply to all resources"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[parameters('logAnalyticsWorkspaceName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "[parameters('logAnalyticsSku')]"
+                },
+                "retentionInDays": "[parameters('logAnalyticsRetentionDays')]",
+                "features": {
+                  "enableLogAccessUsingOnlyResourcePermissions": true
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": "[if(equals(parameters('environment'), 'prod'), -1, 1)]"
+                },
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('containerRegistryName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('containerRegistrySku')]"
+              },
+              "properties": {
+                "adminUserEnabled": true,
+                "publicNetworkAccess": "Enabled",
+                "networkRuleBypassOptions": "AzureServices",
+                "policies": {
+                  "quarantinePolicy": {
+                    "status": "disabled"
+                  },
+                  "trustPolicy": {
+                    "type": "Notary",
+                    "status": "disabled"
+                  },
+                  "retentionPolicy": {
+                    "days": 30,
+                    "status": "enabled"
+                  }
+                },
+                "encryption": {
+                  "status": "disabled"
+                },
+                "dataEndpointEnabled": false,
+                "zoneRedundancy": "[if(equals(parameters('environment'), 'prod'), 'Enabled', 'Disabled')]"
+              }
+            },
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('containerAppsEnvironmentName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').primarySharedKey]"
+                  }
+                },
+                "zoneRedundant": "[if(equals(parameters('environment'), 'prod'), true(), false())]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('apiContainerAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "http",
+                    "allowInsecure": false,
+                    "traffic": [
+                      {
+                        "latestRevision": true,
+                        "weight": 100
+                      }
+                    ]
+                  },
+                  "registries": [
+                    {
+                      "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]",
+                      "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').username]",
+                      "passwordSecretRef": "container-registry-password"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "container-registry-password",
+                      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').passwords[0].value]"
+                    },
+                    {
+                      "name": "mongodb-connection-string",
+                      "value": "[format('mongodb://{0}:{1}@{2}:27017/{3}?authSource=admin', parameters('mongoRootUsername'), parameters('mongoRootPassword'), reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('mongoContainerName')), '2023-05-01').ipAddress.fqdn, parameters('mongoDatabaseName'))]"
+                    },
+                    {
+                      "name": "storage-connection-string",
+                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value, environment().suffixes.storage)]"
+                    },
+                    {
+                      "name": "communication-services-connection-string",
+                      "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', parameters('communicationServicesName')), '2023-04-01').primaryConnectionString]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "api",
+                      "image": "[parameters('apiContainerImage')]",
+                      "resources": {
+                        "cpu": "[json(parameters('apiCpu'))]",
+                        "memory": "[parameters('apiMemory')]"
+                      },
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "[if(equals(parameters('environment'), 'prod'), 'Production', 'Development')]"
+                        },
+                        {
+                          "name": "MongoDB__ConnectionString",
+                          "secretRef": "mongodb-connection-string"
+                        },
+                        {
+                          "name": "Azure__StorageConnectionString",
+                          "secretRef": "storage-connection-string"
+                        },
+                        {
+                          "name": "Azure__CommunicationServicesConnectionString",
+                          "secretRef": "communication-services-connection-string"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('apiMinReplicas')]",
+                    "maxReplicas": "[parameters('apiMaxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "http-scaling",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "10"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Communication/communicationServices', parameters('communicationServicesName'))]",
+                "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]",
+                "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+                "[resourceId('Microsoft.ContainerInstance/containerGroups', parameters('mongoContainerName'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.ContainerInstance/containerGroups",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('mongoContainerName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "containers": [
+                  {
+                    "name": "mongodb",
+                    "properties": {
+                      "image": "[parameters('mongoContainerImage')]",
+                      "ports": [
+                        {
+                          "port": 27017,
+                          "protocol": "TCP"
+                        }
+                      ],
+                      "environmentVariables": [
+                        {
+                          "name": "MONGO_INITDB_ROOT_USERNAME",
+                          "value": "[parameters('mongoRootUsername')]"
+                        },
+                        {
+                          "name": "MONGO_INITDB_ROOT_PASSWORD",
+                          "secureValue": "[parameters('mongoRootPassword')]"
+                        },
+                        {
+                          "name": "MONGO_INITDB_DATABASE",
+                          "value": "[parameters('mongoDatabaseName')]"
+                        }
+                      ],
+                      "resources": {
+                        "requests": {
+                          "cpu": "[json(parameters('mongoCpu'))]",
+                          "memoryInGB": "[json(parameters('mongoMemory'))]"
+                        }
+                      },
+                      "volumeMounts": [
+                        {
+                          "name": "mongodb-data",
+                          "mountPath": "/data/db"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "Always",
+                "ipAddress": {
+                  "type": "Public",
+                  "dnsNameLabel": "[format('{0}-{1}', parameters('mongoContainerName'), uniqueString(resourceGroup().id))]",
+                  "ports": [
+                    {
+                      "port": 27017,
+                      "protocol": "TCP"
+                    }
+                  ]
+                },
+                "volumes": [
+                  {
+                    "name": "mongodb-data",
+                    "azureFile": {
+                      "shareName": "mongodb-data",
+                      "storageAccountName": "[parameters('storageAccountName')]",
+                      "storageAccountKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value]"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Communication/communicationServices",
+              "apiVersion": "2023-04-01",
+              "name": "[parameters('communicationServicesName')]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "dataLocation": "[parameters('communicationServicesDataLocation')]"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": false,
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow"
+                },
+                "encryption": {
+                  "services": {
+                    "blob": {
+                      "enabled": true,
+                      "keyType": "Account"
+                    }
+                  },
+                  "keySource": "Microsoft.Storage"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "deleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                },
+                "containerDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'archived-messages')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'files')]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "shareDeleteRetentionPolicy": {
+                  "enabled": true,
+                  "days": 7
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'mongodb-data')]",
+              "properties": {
+                "accessTier": "TransactionOptimized",
+                "shareQuota": "[if(equals(parameters('environment'), 'prod'), 100, 20)]",
+                "enabledProtocols": "SMB"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/fileServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "condition": "[parameters('enableLifecyclePolicies')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2025-04-01",
+              "name": "storage-lifecycle-policies",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "storageAccountName": {
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  "enableArchiveLifecycle": {
+                    "value": true
+                  },
+                  "enableFilesLifecycle": {
+                    "value": true
+                  },
+                  "archiveCoolTierDays": {
+                    "value": 90
+                  },
+                  "archiveArchiveTierDays": {
+                    "value": 180
+                  },
+                  "filesCoolTierDays": {
+                    "value": 30
+                  },
+                  "filesArchiveTierDays": {
+                    "value": 180
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.40.2.10011",
+                      "templateHash": "6936517763645679390"
+                    }
+                  },
+                  "parameters": {
+                    "storageAccountName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the storage account"
+                      }
+                    },
+                    "enableArchiveLifecycle": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Enable lifecycle policies for archives/ prefix"
+                      }
+                    },
+                    "enableFilesLifecycle": {
+                      "type": "bool",
+                      "defaultValue": true,
+                      "metadata": {
+                        "description": "Enable lifecycle policies for files/ prefix"
+                      }
+                    },
+                    "archiveCoolTierDays": {
+                      "type": "int",
+                      "defaultValue": 90,
+                      "metadata": {
+                        "description": "Days after which archive blobs move to Cool tier"
+                      }
+                    },
+                    "archiveArchiveTierDays": {
+                      "type": "int",
+                      "defaultValue": 180,
+                      "metadata": {
+                        "description": "Days after which archive blobs move to Archive tier"
+                      }
+                    },
+                    "filesCoolTierDays": {
+                      "type": "int",
+                      "defaultValue": 30,
+                      "metadata": {
+                        "description": "Days after which file blobs move to Cool tier"
+                      }
+                    },
+                    "filesArchiveTierDays": {
+                      "type": "int",
+                      "defaultValue": 180,
+                      "metadata": {
+                        "description": "Days after which file blobs move to Archive tier"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+                      "apiVersion": "2023-01-01",
+                      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+                      "properties": {
+                        "policy": {
+                          "rules": "[concat(if(parameters('enableArchiveLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-archives-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('archiveCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/')))), createObject('enabled', true(), 'name', 'move-archives-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('archiveArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/'))))), createArray()), if(parameters('enableFilesLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-files-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('filesCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/')))), createObject('enabled', true(), 'name', 'move-files-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('filesArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/'))))), createArray()))]"
+                        }
+                      }
+                    }
+                  ],
+                  "outputs": {
+                    "lifecyclePolicyName": {
+                      "type": "string",
+                      "value": "default"
+                    },
+                    "storageAccountId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName'))]"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "value": "[parameters('logAnalyticsWorkspaceName')]"
+            },
+            "logAnalyticsCustomerId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2022-10-01').customerId]"
+            },
+            "containerRegistryId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]"
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "value": "[parameters('containerRegistryName')]"
+            },
+            "containerRegistryLoginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').loginServer]"
+            },
+            "containerAppsEnvironmentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvironmentName'))]"
+            },
+            "containerAppsEnvironmentName": {
+              "type": "string",
+              "value": "[parameters('containerAppsEnvironmentName')]"
+            },
+            "apiContainerAppId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('apiContainerAppName'))]"
+            },
+            "apiContainerAppName": {
+              "type": "string",
+              "value": "[parameters('apiContainerAppName')]"
+            },
+            "apiContainerAppFqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('apiContainerAppName')), '2023-05-01').configuration.ingress.fqdn]"
+            },
+            "mongoContainerInstanceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ContainerInstance/containerGroups', parameters('mongoContainerName'))]"
+            },
+            "mongoContainerInstanceName": {
+              "type": "string",
+              "value": "[parameters('mongoContainerName')]"
+            },
+            "mongoContainerInstanceFqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('mongoContainerName')), '2023-05-01').ipAddress.fqdn]"
+            },
+            "mongoContainerInstanceIpAddress": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('mongoContainerName')), '2023-05-01').ipAddress.ip]"
+            },
+            "communicationServicesId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Communication/communicationServices', parameters('communicationServicesName'))]"
+            },
+            "communicationServicesName": {
+              "type": "string",
+              "value": "[parameters('communicationServicesName')]"
+            },
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            },
+            "storageAccountPrimaryEndpoints": {
+              "type": "object",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints]"
+            },
+            "archivedMessagesContainerName": {
+              "type": "string",
+              "value": "archived-messages"
+            },
+            "filesContainerName": {
+              "type": "string",
+              "value": "files"
+            },
+            "lifecyclePoliciesDeployed": {
+              "type": "bool",
+              "value": "[parameters('enableLifecyclePolicies')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[parameters('resourceGroupName')]"
+    },
+    "resourceGroupId": {
+      "type": "string",
+      "value": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+    },
+    "containerRegistryLoginServer": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.containerRegistryLoginServer.value]"
+    },
+    "apiContainerAppFqdn": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.apiContainerAppFqdn.value]"
+    },
+    "mongoContainerInstanceFqdn": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.mongoContainerInstanceFqdn.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.storageAccountName.value]"
+    },
+    "communicationServicesId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', 'infrastructure-deployment'), '2025-04-01').outputs.communicationServicesId.value]"
+    }
+  }
+}
