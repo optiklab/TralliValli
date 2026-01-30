@@ -132,14 +132,26 @@ The API will start on:
 
 #### Environment Variables for API
 
-The API uses the following connection strings (configured in `appsettings.Development.json`):
+The API reads connection strings from environment variables or configuration. You can set them via:
 
+**Environment Variables** (Recommended for local development):
+```bash
+export MONGODB_CONNECTION_STRING="mongodb://admin:password@localhost:27017/tralivali?authSource=admin"
+export RABBITMQ_CONNECTION_STRING="amqp://admin:password@localhost:5672/"
+export REDIS_CONNECTION_STRING="localhost:6379,password=password"
+```
+
+**Or appsettings.Development.json**:
 ```json
 {
-  "ConnectionStrings": {
-    "MongoDB": "mongodb://admin:password@localhost:27017/tralivali?authSource=admin",
-    "RabbitMQ": "amqp://admin:password@localhost:5672/",
-    "Redis": "localhost:6379,password=password"
+  "MongoDB": {
+    "ConnectionString": "mongodb://admin:password@localhost:27017/tralivali?authSource=admin"
+  },
+  "RabbitMQ": {
+    "ConnectionString": "amqp://admin:password@localhost:5672/"
+  },
+  "Redis": {
+    "ConnectionString": "localhost:6379,password=password"
   }
 }
 ```
@@ -254,7 +266,7 @@ E2E tests require all services to be running. See [E2E_TESTING.md](./E2E_TESTING
 
 ```bash
 # Prerequisites: Start Docker services and API
-docker-compose -f docker-compose.e2e.yml up -d
+docker compose -f docker-compose.e2e.yml up -d
 cd src/TraliVali.Api && dotnet run
 
 # In another terminal, run E2E tests
