@@ -1,0 +1,48 @@
+{
+    # Global options
+    email admin@yourdomain.com  # Replace with your email for Let's Encrypt notifications
+    admin off                   # Disable admin API for security
+}
+
+# Replace api.yourdomain.com with your actual domain
+# Caddy automatically handles HTTPS with Let's Encrypt
+api.yourdomain.com {
+    # Automatic HTTPS with Let's Encrypt
+    # No manual certificate configuration needed!
+
+    # Reverse proxy to API
+    reverse_proxy api:8080 {
+        # Health check
+        # Note: Using /weatherforecast as placeholder since API doesn't have /health endpoint yet
+        # TODO: Implement proper /health endpoint and update this configuration
+        health_uri /weatherforecast
+        health_interval 30s
+        health_timeout 10s
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer-when-downgrade"
+        Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'self';"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        -Server  # Remove server header
+    }
+
+    # File upload size limit
+    request_body {
+        max_size 100MB
+    }
+
+    # Logging
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# Optional: Redirect www to non-www
+www.api.yourdomain.com {
+    redir https://api.yourdomain.com{uri} permanent
+}
