@@ -342,7 +342,7 @@ export class FileUploadService {
           // Report encryption progress as part of overall upload (first 20% of progress)
           onProgress?.({
             loaded: progress.processed,
-            total: fileToUpload.size + progress.total, // Account for upload step
+            total: progress.total * 5, // Total work is 5x encryption (20% encryption, 80% upload)
             percentage: Math.round((progress.percentage * 20) / 100),
           });
         }
@@ -379,9 +379,10 @@ export class FileUploadService {
       (progress) => {
         // If encrypted, adjust progress to account for encryption step (20-100%)
         if (encryptionService) {
+          const uploadTotalWork = progress.total * 5; // Total work is 5x upload
           onProgress?.({
             loaded: progress.loaded,
-            total: progress.total,
+            total: uploadTotalWork,
             percentage: 20 + Math.round((progress.percentage * 80) / 100),
           });
         } else {

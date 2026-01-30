@@ -15,8 +15,9 @@
 import { encryptToBase64, decryptFromBase64, type EncryptedData } from './aesGcmEncryption';
 import type { KeyManagementService } from './keyManagement';
 
-// Constants
-const CHUNK_SIZE = 64 * 1024; // 64KB chunks for streaming
+// Constants for AES-GCM
+const IV_LENGTH_BYTES = 12; // 96 bits - recommended for GCM
+const TAG_LENGTH_BYTES = 16; // 128 bits authentication tag
 
 // ============================================================================
 // Types
@@ -46,6 +47,7 @@ export interface EncryptedFileMetadata {
   tag: string;
   originalSize: number;
   encryptedSize: number;
+  originalMimeType: string; // Preserve original MIME type for decryption
 }
 
 // ============================================================================
@@ -98,7 +100,7 @@ async function decryptSmallFile(
   const encrypted: EncryptedData = {
     iv: metadata.iv,
     ciphertext: btoa(
-      String.fromCharCode(...encryptedData.slice(12, encryptedData.length - 16))
+      String.fromCharCode(...encryptedData.slice(IV_LENGTH_BYTES, encryptedData.length - TAG_LENGTH_BYTES))
     ),
     tag: metadata.tag,
   };
@@ -124,6 +126,12 @@ export class FileEncryptionService {
 
   /**
    * Encrypt a file for upload
+   *
+   * Note: Current implementation loads the entire file into memory for encryption.
+   * While labeled as "streaming", AES-GCM's authenticated encryption requires
+   * the full ciphertext to generate the authentication tag, making true streaming
+   * encryption complex. For very large files (>100MB), consider chunked encryption
+   * with a different approach.
    *
    * @param conversationId - The conversation ID
    * @param file - The file to encrypt
@@ -157,6 +165,7 @@ export class FileEncryptionService {
       const fileBuffer = await readFileAsArrayBuffer(file);
       const fileData = new Uint8Array(fileBuffer);
       const originalSize = fileData.length;
+      const originalMimeType = file instanceof File ? file.type : 'application/octet-stream';
 
       // Report initial progress
       onProgress?.({
@@ -165,9 +174,9 @@ export class FileEncryptionService {
         percentage: 0,
       });
 
-      // For files under 5MB, use single-pass encryption
-      // For larger files, we still use single-pass for simplicity and integrity
-      // (streaming encryption with AES-GCM is complex due to authentication tag)
+      // Encrypt the file (loads entire file into memory)
+      // For files under 5MB, this is acceptable. For larger files, this still works
+      // but may cause memory pressure in the browser. Future optimization: chunked encryption.
       const { encrypted, encryptedBytes } = await encryptSmallFile(conversationKey, fileData);
 
       const encryptedSize = encryptedBytes.length;
@@ -189,6 +198,7 @@ export class FileEncryptionService {
           tag: encrypted.tag,
           originalSize,
           encryptedSize,
+          originalMimeType,
         },
         success: true,
       };
@@ -200,6 +210,7 @@ export class FileEncryptionService {
           tag: '',
           originalSize: 0,
           encryptedSize: 0,
+          originalMimeType: '',
         },
         success: false,
         error: `Encryption failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -248,8 +259,10 @@ export class FileEncryptionService {
       // Decrypt the file
       const decryptedData = await decryptSmallFile(conversationKey, encryptedData, metadata);
 
-      // Create blob from decrypted data
-      const decryptedBlob = new Blob([decryptedData]);
+      // Create blob from decrypted data with original MIME type
+      const decryptedBlob = new Blob([decryptedData], {
+        type: metadata.originalMimeType || 'application/octet-stream',
+      });
 
       // Report completion
       onProgress?.({

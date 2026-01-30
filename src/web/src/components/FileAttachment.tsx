@@ -31,10 +31,14 @@ export function FileAttachment({
 }: FileAttachmentProps) {
   const [imageError, setImageError] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const lightboxRef = useRef<HTMLDivElement>(null);
   const { downloadFile, isDownloading } = useFileDownload();
 
   const handleDownload = async () => {
+    // Clear previous errors
+    setDownloadError(null);
+
     // If custom onDownload handler is provided, use it
     if (onDownload) {
       onDownload(file);
@@ -45,6 +49,9 @@ export function FileAttachment({
     try {
       await downloadFile(file.id, file.conversationId, encryptionMetadata);
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to download file';
+      setDownloadError(errorMessage);
       console.error('Failed to download file:', error);
     }
   };
@@ -136,6 +143,13 @@ export function FileAttachment({
             {file.fileName}
           </p>
           <p className="text-xs text-gray-500 mt-0.5">{formatFileSize(file.size)}</p>
+
+          {/* Download Error */}
+          {downloadError && (
+            <p className="text-xs text-red-600 mt-1" role="alert">
+              {downloadError}
+            </p>
+          )}
 
           {/* Download Button */}
           <button

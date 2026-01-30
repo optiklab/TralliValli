@@ -148,11 +148,9 @@ export class FileDownloadService {
     }
 
     // Download encrypted file with progress tracking (50% of total progress)
-    let downloadProgress = 0;
     const encryptedBlob = await downloadFromUrl(
       downloadUrlResponse.downloadUrl,
       (progress) => {
-        downloadProgress = progress.percentage;
         onProgress?.({
           loaded: progress.loaded,
           total: progress.total * 2, // Account for decryption step
