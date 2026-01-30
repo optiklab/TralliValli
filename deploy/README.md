@@ -168,11 +168,14 @@ docker compose -f docker-compose.prod.yml up -d
 ### Backup and Restore
 
 ```bash
-# Backup volumes
-docker run --rm -v tralivali_mongodb_data:/data -v $(pwd)/backups:/backup alpine tar czf /backup/mongodb-$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+# List volume names first
+docker volume ls | grep mongodb
 
-# Restore volumes
-docker run --rm -v tralivali_mongodb_data:/data -v $(pwd)/backups:/backup alpine tar xzf /backup/mongodb-YYYYMMDD-HHMMSS.tar.gz -C /data
+# Backup volumes (replace PROJECT_NAME with actual prefix from volume ls output)
+docker run --rm -v PROJECT_NAME_mongodb_data:/data -v $(pwd)/backups:/backup alpine tar czf /backup/mongodb-$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+
+# Restore volumes (replace PROJECT_NAME with actual prefix from volume ls output)
+docker run --rm -v PROJECT_NAME_mongodb_data:/data -v $(pwd)/backups:/backup alpine tar xzf /backup/mongodb-YYYYMMDD-HHMMSS.tar.gz -C /data
 ```
 
 ### Monitoring
@@ -184,8 +187,9 @@ docker stats
 # Disk usage
 docker system df -v
 
-# Network inspection
-docker network inspect tralivali-prod-network
+# Network inspection (check actual network name first)
+docker network ls
+docker network inspect <ACTUAL_NETWORK_NAME>
 ```
 
 ## SSL/TLS Configuration
@@ -286,6 +290,7 @@ Before deploying to production:
 - [ ] Log aggregation configured
 - [ ] Database backups scheduled
 - [ ] Security audit completed
+- [ ] Create dedicated `/health` endpoint in API (currently using `/weatherforecast` as placeholder)
 
 ## Resource Requirements
 

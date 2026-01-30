@@ -6,7 +6,8 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
+      # Uncomment when SSL certificates are configured
+      # - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # Uncomment for SSL certificates
@@ -44,6 +45,7 @@ services:
       - MongoDB__ConnectionString=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
       - MongoDB__DatabaseName=${MONGO_DATABASE}
       - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD}
+      - RabbitMQ__ConnectionString=amqp://${RABBITMQ_USERNAME}:${RABBITMQ_PASSWORD}@rabbitmq:5672/${RABBITMQ_VHOST}
       - Jwt__PrivateKey=${JWT_PRIVATE_KEY}
       - Jwt__PublicKey=${JWT_PUBLIC_KEY}
       - Jwt__Issuer=${JWT_ISSUER:-TraliVali}
@@ -103,7 +105,7 @@ services:
           cpus: '1.0'
           memory: 2G
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongosh test --quiet
       interval: 30s
       timeout: 10s
       retries: 5
