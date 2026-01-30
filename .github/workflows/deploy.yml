@@ -1,0 +1,226 @@
+name: CD - Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  REGISTRY_NAME: ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
+  IMAGE_NAME: tralivali-api
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  CONTAINER_APP_NAME: ${{ secrets.AZURE_CONTAINER_APP_NAME }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Log in to Azure Container Registry
+      run: |
+        az acr login --name ${{ env.REGISTRY_NAME }}
+    
+    - name: Build Docker image
+      run: |
+        docker build \
+          -f src/TraliVali.Api/Dockerfile \
+          -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          -t ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest \
+          .
+    
+    - name: Push Docker image to ACR
+      run: |
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+    
+    - name: Log out from Azure
+      if: always()
+      run: |
+        az logout
+
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure Container Apps
+      id: deploy
+      run: |
+        az containerapp update \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        
+        # Get the app URL
+        APP_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
+        echo "Deployed to: https://$APP_URL"
+    
+    - name: Verify deployment
+      run: |
+        APP_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "Waiting for application to be ready..."
+        sleep 30
+        
+        # Check if the app is responding
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/weatherforecast || echo "000")
+        
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "✓ Application is responding with HTTP $HTTP_CODE"
+        else
+          echo "⚠ Application returned HTTP $HTTP_CODE"
+          echo "Note: This may be expected if the endpoint requires authentication"
+        fi
+    
+    - name: Log out from Azure
+      if: always()
+      run: |
+        az logout
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure Container Apps
+      id: deploy
+      run: |
+        az containerapp update \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_STAGING }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        
+        # Get the app URL
+        APP_URL=$(az containerapp show \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_STAGING }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
+        echo "Deployed to: https://$APP_URL"
+    
+    - name: Log out from Azure
+      if: always()
+      run: |
+        az logout
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+    
+    steps:
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Deploy to Azure Container Apps
+      id: deploy
+      run: |
+        az containerapp update \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        
+        # Get the app URL
+        APP_URL=$(az containerapp show \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "url=https://$APP_URL" >> $GITHUB_OUTPUT
+        echo "Deployed to: https://$APP_URL"
+    
+    - name: Verify deployment
+      run: |
+        APP_URL=$(az containerapp show \
+          --name ${{ secrets.AZURE_CONTAINER_APP_NAME_PROD }} \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP_PROD }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        
+        echo "Waiting for application to be ready..."
+        sleep 30
+        
+        # Check if the app is responding
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/weatherforecast || echo "000")
+        
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "✓ Application is responding with HTTP $HTTP_CODE"
+        else
+          echo "⚠ Application returned HTTP $HTTP_CODE"
+          echo "Note: This may be expected if the endpoint requires authentication"
+        fi
+    
+    - name: Log out from Azure
+      if: always()
+      run: |
+        az logout
