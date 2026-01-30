@@ -122,10 +122,13 @@ export class KeyBackupIntegrationService {
 
   /**
    * Complete recovery flow for new device/browser
-   * @param password - Password for backup decryption
+   * @param password - Password used when the backup was created (not the master password for individual keys)
    *
    * This is the main entry point for recovering keys on a new device.
    * It downloads the backup from the server and restores all keys locally.
+   *
+   * Note: This password is for the backup encryption itself, created during createBackup().
+   * The individual keys within the backup remain encrypted with their original passwords.
    */
   async recoverOnNewDevice(password: string): Promise<void> {
     try {

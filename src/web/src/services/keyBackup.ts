@@ -114,7 +114,7 @@ export class KeyBackupService {
   /**
    * Restore keys from an encrypted backup
    * @param backup - Encrypted backup blob
-   * @param password - Password for decryption
+   * @param password - Password used when creating the backup (for decrypting the backup blob)
    *
    * Security Notes:
    * - Decrypts backup blob using provided password
@@ -123,7 +123,8 @@ export class KeyBackupService {
    * - Safely handles decryption failures
    *
    * Important: Keys are restored with their original encryption.
-   * Ensure the same master password is used that was used when backup was created.
+   * The password parameter is for decrypting the backup blob, not the individual keys.
+   * Individual keys retain their original password protection.
    */
   async restoreBackup(backup: EncryptedBackup, password: string): Promise<void> {
     if (!password || password.length < 8) {
@@ -144,7 +145,7 @@ export class KeyBackupService {
       iv = this.base64ToUint8Array(backup.iv);
       encryptedData = this.base64ToUint8Array(backup.encryptedData);
     } catch (error) {
-      throw new Error('Failed to decrypt backup. Invalid password or corrupted data.');
+      throw new Error('Failed to parse backup data. Invalid backup format.');
     }
 
     const decryptionKey = await this.deriveEncryptionKey(password, salt);
