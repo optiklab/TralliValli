@@ -137,6 +137,9 @@ export class KeyManagementService {
    *
    * Note: The master key should be derived from the user's password or
    * another secure source. It must be an AES-256-GCM key.
+   *
+   * Security Note: The master key is stored in memory only and should be
+   * cleared on logout by calling close().
    */
   async setMasterKey(masterKey: CryptoKey): Promise<void> {
     if (!masterKey || masterKey.type !== 'secret' || masterKey.algorithm.name !== 'AES-GCM') {
@@ -147,10 +150,17 @@ export class KeyManagementService {
 
   /**
    * Derive a master key from a password
-   * @param password - User's password
+   * @param password - User's password (minimum 8 characters)
    * @param salt - Optional salt (will be generated if not provided)
    * @param extractable - Whether the key should be extractable (default: false)
    * @returns Master key and salt used for derivation
+   *
+   * Security Notes:
+   * - Uses PBKDF2 with SHA-256 and 100,000 iterations
+   * - Password strength: Minimum 8 characters. Applications should enforce
+   *   stronger requirements (12+ characters, complexity) before calling this.
+   * - Salt should be stored securely for re-derivation
+   * - Master key is never persisted, only kept in memory
    */
   async deriveMasterKeyFromPassword(
     password: string,
@@ -232,6 +242,10 @@ export class KeyManagementService {
 
     // Use a fixed salt for deterministic derivation
     // This ensures both parties derive the same key
+    // Trade-off: Fixed salt provides less security than random salt,
+    // but is necessary for deterministic key derivation in E2EE scenarios
+    // where both parties must independently derive the same key.
+    // The shared secret itself should provide sufficient entropy.
     const salt = encoder.encode('TralliValli-ConversationKey');
 
     // Derive conversation key using HKDF
@@ -279,6 +293,8 @@ export class KeyManagementService {
     );
 
     // Split ciphertext and tag
+    // Note: Web Crypto API's AES-GCM always appends the 16-byte authentication
+    // tag to the end of the ciphertext. This is guaranteed by the specification.
     const encryptedArray = new Uint8Array(encryptedBuffer);
     const ciphertext = encryptedArray.slice(0, -16);
     const tag = encryptedArray.slice(-16);
@@ -323,6 +339,8 @@ export class KeyManagementService {
     );
 
     // Import as CryptoKey
+    // Note: Key is extractable to allow re-encryption during key rotation
+    // and to support exporting for use with encryption services.
     return await importAESKey(new Uint8Array(decryptedBuffer), true);
   }
 
@@ -493,6 +511,10 @@ export class KeyManagementService {
 
   /**
    * Convert ArrayBuffer to Base64 string
+   * 
+   * Note: This implementation is safe for binary data (Uint8Array/ArrayBuffer).
+   * It handles the conversion to base64 properly for cryptographic key material.
+   * Not suitable for text with Unicode characters - use TextEncoder for that.
    */
   private arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
     const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
