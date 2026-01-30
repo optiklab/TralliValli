@@ -1,0 +1,285 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "4163416347800699684"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "tralivali",
+      "metadata": {
+        "description": "Application name prefix"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[format('{0}{1}{2}', parameters('appName'), parameters('environment'), uniqueString(resourceGroup().id))]",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Storage account name (must be globally unique, 3-24 characters, lowercase letters and numbers only)"
+      }
+    },
+    "enableLifecyclePolicies": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable lifecycle policies for blob storage"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "application": "TraliVali",
+        "environment": "[parameters('environment')]",
+        "managedBy": "Bicep"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('storageAccountName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "accessTier": "Hot",
+        "supportsHttpsTrafficOnly": true,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        },
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": true,
+              "keyType": "Account"
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+      "properties": {
+        "deleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        },
+        "containerDeleteRetentionPolicy": {
+          "enabled": true,
+          "days": 7
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'archived-messages')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', 'files')]",
+      "properties": {
+        "publicAccess": "None"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+      ]
+    },
+    {
+      "condition": "[parameters('enableLifecyclePolicies')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage-lifecycle-policies",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[parameters('storageAccountName')]"
+          },
+          "enableArchiveLifecycle": {
+            "value": true
+          },
+          "enableFilesLifecycle": {
+            "value": true
+          },
+          "archiveCoolTierDays": {
+            "value": 90
+          },
+          "archiveArchiveTierDays": {
+            "value": 180
+          },
+          "filesCoolTierDays": {
+            "value": 30
+          },
+          "filesArchiveTierDays": {
+            "value": 180
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "6936517763645679390"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the storage account"
+              }
+            },
+            "enableArchiveLifecycle": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable lifecycle policies for archives/ prefix"
+              }
+            },
+            "enableFilesLifecycle": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable lifecycle policies for files/ prefix"
+              }
+            },
+            "archiveCoolTierDays": {
+              "type": "int",
+              "defaultValue": 90,
+              "metadata": {
+                "description": "Days after which archive blobs move to Cool tier"
+              }
+            },
+            "archiveArchiveTierDays": {
+              "type": "int",
+              "defaultValue": 180,
+              "metadata": {
+                "description": "Days after which archive blobs move to Archive tier"
+              }
+            },
+            "filesCoolTierDays": {
+              "type": "int",
+              "defaultValue": 30,
+              "metadata": {
+                "description": "Days after which file blobs move to Cool tier"
+              }
+            },
+            "filesArchiveTierDays": {
+              "type": "int",
+              "defaultValue": 180,
+              "metadata": {
+                "description": "Days after which file blobs move to Archive tier"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/managementPolicies",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "policy": {
+                  "rules": "[concat(if(parameters('enableArchiveLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-archives-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('archiveCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/')))), createObject('enabled', true(), 'name', 'move-archives-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('archiveArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('archives/'))))), createArray()), if(parameters('enableFilesLifecycle'), createArray(createObject('enabled', true(), 'name', 'move-files-to-cool', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToCool', createObject('daysAfterModificationGreaterThan', parameters('filesCoolTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/')))), createObject('enabled', true(), 'name', 'move-files-to-archive', 'type', 'Lifecycle', 'definition', createObject('actions', createObject('baseBlob', createObject('tierToArchive', createObject('daysAfterModificationGreaterThan', parameters('filesArchiveTierDays')))), 'filters', createObject('blobTypes', createArray('blockBlob'), 'prefixMatch', createArray('files/'))))), createArray()))]"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "lifecyclePolicyName": {
+              "type": "string",
+              "value": "default"
+            },
+            "storageAccountId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[parameters('storageAccountName')]"
+    },
+    "storageAccountId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+    },
+    "storageAccountPrimaryEndpoints": {
+      "type": "object",
+      "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints]"
+    },
+    "archivedMessagesContainerName": {
+      "type": "string",
+      "value": "archived-messages"
+    },
+    "filesContainerName": {
+      "type": "string",
+      "value": "files"
+    },
+    "lifecyclePoliciesDeployed": {
+      "type": "bool",
+      "value": "[parameters('enableLifecyclePolicies')]"
+    }
+  }
+}
