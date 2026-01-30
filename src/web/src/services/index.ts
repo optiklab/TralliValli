@@ -31,3 +31,15 @@ export {
   type ExportedKeyPair,
   type StoredKeyPair,
 } from './cryptoKeyExchange';
+
+export {
+  encrypt,
+  decrypt,
+  generateKey,
+  importKey,
+  exportKey,
+  encryptToBase64,
+  decryptFromBase64,
+  type EncryptionResult,
+  type EncryptedData,
+} from './aesGcmEncryption';

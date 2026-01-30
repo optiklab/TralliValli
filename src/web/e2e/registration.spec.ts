@@ -122,7 +122,7 @@ test.describe('Registration via Invite Link', () => {
 
     // Check if error message is displayed (use first() to handle multiple matches)
     await expect(page.locator('text=/invalid|expired/i').first()).toBeVisible({ timeout: 5000 });
-    
+
     // Verify that the email input is disabled due to invalid invite
     const emailInput = page.locator('input[name="email"], input[type="email"]');
     await expect(emailInput).toBeDisabled();
@@ -172,10 +172,10 @@ test.describe('Registration via Invite Link', () => {
     // Wait for potential API call with a small timeout, expect it to timeout
     const registrationRequest = page.waitForRequest('**/auth/register', { timeout: 2000 });
     await expect(registrationRequest).rejects.toThrow();
-    
+
     // The email input should still be visible (not navigated away)
     await expect(emailInput).toBeVisible();
-    
+
     // Verify registration was not attempted
     expect(registrationAttempts).toBe(0);
   });
