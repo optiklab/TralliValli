@@ -453,6 +453,147 @@ public class ArchiveServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ExportConversationMessagesAsync_ShouldDecryptMessagesWithMasterPassword()
+    {
+        // Arrange
+        var user1 = await CreateTestUserAsync("user1@test.com", "User One");
+        var user2 = await CreateTestUserAsync("user2@test.com", "User Two");
+        var conversation = await CreateTestConversationAsync("Encrypted Conversation", new[] { user1.Id, user2.Id });
+
+        var baseTime = DateTime.UtcNow.AddDays(-5);
+        var masterPassword = "SecureP@ssw0rd123!";
+        
+        // Generate encryption service to create test data
+        var encryptionService = new MessageEncryptionService();
+        
+        // Generate a random salt for key derivation
+        var salt = new byte[16];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(salt);
+        }
+        var saltBase64 = Convert.ToBase64String(salt);
+        
+        // Derive master key from password
+        var masterKey = await encryptionService.DeriveMasterKeyFromPasswordAsync(masterPassword, saltBase64);
+        
+        // Generate a conversation key
+        var conversationKey = new byte[32];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(conversationKey);
+        }
+        
+        // Encrypt the conversation key with the master key
+        var keyIv = new byte[12];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(keyIv);
+        }
+        var keyTag = new byte[16];
+        var encryptedConversationKey = new byte[32];
+        using (var aes = new System.Security.Cryptography.AesGcm(masterKey, keyTag.Length))
+        {
+            aes.Encrypt(keyIv, conversationKey, encryptedConversationKey, keyTag);
+        }
+        
+        // Store the conversation key in the database
+        var storedKey = new ConversationKey
+        {
+            ConversationId = conversation.Id,
+            EncryptedKey = Convert.ToBase64String(encryptedConversationKey),
+            Iv = Convert.ToBase64String(keyIv),
+            Salt = saltBase64,
+            Tag = Convert.ToBase64String(keyTag),
+            Version = 1,
+            CreatedAt = DateTime.UtcNow
+        };
+        await _mongoContext!.ConversationKeys.InsertOneAsync(storedKey);
+        
+        // Create an encrypted message
+        var messageText = "Secret message content";
+        var messageBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+        var messageIv = new byte[12];
+        using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(messageIv);
+        }
+        var messageTag = new byte[16];
+        var ciphertext = new byte[messageBytes.Length];
+        using (var aes = new System.Security.Cryptography.AesGcm(conversationKey, messageTag.Length))
+        {
+            aes.Encrypt(messageIv, messageBytes, ciphertext, messageTag);
+        }
+        
+        // Store message with encrypted content in the expected format: iv:tag:ciphertext
+        var encryptedContent = $"{Convert.ToBase64String(messageIv)}:{Convert.ToBase64String(messageTag)}:{Convert.ToBase64String(ciphertext)}";
+        var message = new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId = user1.Id,
+            Type = "text",
+            Content = string.Empty, // No plain content
+            EncryptedContent = encryptedContent,
+            CreatedAt = baseTime
+        };
+        await _mongoContext.Messages.InsertOneAsync(message);
+
+        var startDate = baseTime.AddDays(-1);
+        var endDate = baseTime.AddDays(1);
+
+        // Act - Export with master password
+        var result = await _archiveService!.ExportConversationMessagesAsync(
+            conversation.Id,
+            startDate,
+            endDate,
+            masterPassword);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Messages);
+        Assert.Equal("Secret message content", result.Messages[0].Content);
+        Assert.Equal("User One", result.Messages[0].SenderName);
+    }
+
+    [Fact]
+    public async Task ExportConversationMessagesAsync_ShouldFallbackToPlainContentWhenDecryptionFails()
+    {
+        // Arrange
+        var user1 = await CreateTestUserAsync("user1@test.com", "User One");
+        var user2 = await CreateTestUserAsync("user2@test.com", "User Two");
+        var conversation = await CreateTestConversationAsync("Test Conversation", new[] { user1.Id, user2.Id });
+
+        var baseTime = DateTime.UtcNow.AddDays(-5);
+        
+        // Create a message with plain content
+        var message = new Message
+        {
+            ConversationId = conversation.Id,
+            SenderId = user1.Id,
+            Type = "text",
+            Content = "Plain text message",
+            EncryptedContent = "invalid:encrypted:content",
+            CreatedAt = baseTime
+        };
+        await _mongoContext!.Messages.InsertOneAsync(message);
+
+        var startDate = baseTime.AddDays(-1);
+        var endDate = baseTime.AddDays(1);
+
+        // Act - Export with wrong password (should fallback to plain content)
+        var result = await _archiveService!.ExportConversationMessagesAsync(
+            conversation.Id,
+            startDate,
+            endDate,
+            "WrongPassword123!");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(result.Messages);
+        Assert.Equal("Plain text message", result.Messages[0].Content);
+    }
+
+    [Fact]
     public async Task ExportConversationMessagesAsync_ShouldHandleUnknownUsers()
     {
         // Arrange
