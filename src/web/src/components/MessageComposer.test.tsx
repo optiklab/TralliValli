@@ -344,20 +344,20 @@ describe('MessageComposer', () => {
       const emojiButton = screen.getByLabelText('Open emoji picker');
 
       // Emoji picker should not be visible initially
-      expect(document.querySelector('.EmojiPickerReact')).toBeNull();
+      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
 
       await user.click(emojiButton);
 
       // Should show emoji picker
       await waitFor(() => {
-        expect(document.querySelector('.EmojiPickerReact')).not.toBeNull();
+        expect(screen.getByTestId('emoji-picker')).toBeInTheDocument();
       });
 
       await user.click(emojiButton);
 
       // Should hide emoji picker
       await waitFor(() => {
-        expect(document.querySelector('.EmojiPickerReact')).toBeNull();
+        expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
       });
     });
 
@@ -375,7 +375,7 @@ describe('MessageComposer', () => {
       const emojiButton = screen.getByLabelText('Open emoji picker');
       await user.click(emojiButton);
 
-      expect(document.querySelector('.EmojiPickerReact')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
     });
   });
 
