@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import * as services from '@services';
 import * as authStore from '@stores/useAuthStore';
 import { RegisterPage } from './RegisterPage';
@@ -21,6 +22,11 @@ vi.mock('@stores/useAuthStore', () => ({
   useAuthStore: vi.fn(),
 }));
 
+// Helper function to render RegisterPage with Router
+const renderWithRouter = (ui: React.ReactElement, { route = '/' } = {}) => {
+  return render(<MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>);
+};
+
 describe('RegisterPage', () => {
   const mockLogin = vi.fn();
 
@@ -30,7 +36,7 @@ describe('RegisterPage', () => {
   });
 
   it('renders the registration form', () => {
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     expect(screen.getByText('Create your account')).toBeInTheDocument();
     expect(screen.getByLabelText('Invite Link')).toBeInTheDocument();
@@ -40,7 +46,7 @@ describe('RegisterPage', () => {
   });
 
   it('updates input fields when user types', () => {
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     const inviteInput = screen.getByLabelText('Invite Link') as HTMLInputElement;
     const emailInput = screen.getByLabelText('Email address') as HTMLInputElement;
@@ -60,7 +66,7 @@ describe('RegisterPage', () => {
       isValid: true,
     });
 
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'valid-token' } });
@@ -79,7 +85,7 @@ describe('RegisterPage', () => {
       message: 'Invite has expired',
     });
 
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
@@ -98,7 +104,7 @@ describe('RegisterPage', () => {
       isValid: false,
     });
 
-    render(<RegisterPage />);
+    renderWithRouter(<RegisterPage />);
 
     const inviteInput = screen.getByLabelText('Invite Link');
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
@@ -115,7 +121,7 @@ describe('RegisterPage', () => {
 
   it('shows error when submitting without invite token', async () => {
     const mockOnError = vi.fn();
-    render(<RegisterPage onError={mockOnError} />);
+    renderWithRouter(<RegisterPage onError={mockOnError} />);
 
     const form = screen.getByRole('button', { name: /create account/i }).closest('form');
 
@@ -134,7 +140,7 @@ describe('RegisterPage', () => {
     const mockOnError = vi.fn();
     vi.mocked(services.api.validateInvite).mockResolvedValue({ isValid: true });
 
-    render(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
+    renderWithRouter(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
 
     await waitFor(
       () => {
@@ -173,7 +179,7 @@ describe('RegisterPage', () => {
     vi.mocked(services.api.validateInvite).mockResolvedValue({ isValid: true });
     vi.mocked(services.api.register).mockResolvedValue(mockRegisterResponse);
 
-    render(<RegisterPage inviteToken="valid-token" onSuccess={mockOnSuccess} />);
+    renderWithRouter(<RegisterPage inviteToken="valid-token" onSuccess={mockOnSuccess} />);
 
     await waitFor(
       () => {
@@ -217,7 +223,7 @@ describe('RegisterPage', () => {
       refreshExpiresAt: '2027-12-31T23:59:59Z',
     });
 
-    render(<RegisterPage inviteToken="valid-token" />);
+    renderWithRouter(<RegisterPage inviteToken="valid-token" />);
 
     await waitFor(
       () => {
@@ -249,7 +255,7 @@ describe('RegisterPage', () => {
     vi.mocked(services.api.validateInvite).mockResolvedValue({ isValid: true });
     vi.mocked(services.api.register).mockRejectedValue(new Error('Registration failed'));
 
-    render(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
+    renderWithRouter(<RegisterPage inviteToken="valid-token" onError={mockOnError} />);
 
     await waitFor(
       () => {
@@ -292,7 +298,7 @@ describe('RegisterPage', () => {
         )
     );
 
-    render(<RegisterPage inviteToken="valid-token" />);
+    renderWithRouter(<RegisterPage inviteToken="valid-token" />);
 
     await waitFor(
       () => {
@@ -318,7 +324,7 @@ describe('RegisterPage', () => {
   it('uses provided inviteToken prop', async () => {
     vi.mocked(services.api.validateInvite).mockResolvedValue({ isValid: true });
 
-    render(<RegisterPage inviteToken="preset-token" />);
+    renderWithRouter(<RegisterPage inviteToken="preset-token" />);
 
     const inviteInput = screen.getByLabelText('Invite Link') as HTMLInputElement;
     expect(inviteInput.value).toBe('preset-token');
