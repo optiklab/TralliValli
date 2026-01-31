@@ -57,6 +57,9 @@ describe('MessageThread', () => {
   ];
 
   beforeEach(() => {
+    // Mock scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn();
+
     // Reset stores
     useConversationStore.getState().reset();
     useAuthStore.setState({ user: mockUser, isAuthenticated: true });

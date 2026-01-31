@@ -7,6 +7,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MessageComposer } from './MessageComposer';
 
+// Mock emoji-picker-react
+vi.mock('emoji-picker-react', () => ({
+  default: ({ onEmojiClick }: { onEmojiClick: (emoji: { emoji: string }) => void }) => (
+    <div className="EmojiPickerReact" data-testid="emoji-picker">
+      <button onClick={() => onEmojiClick({ emoji: '😀' })}>😀</button>
+    </div>
+  ),
+}));
+
 describe('MessageComposer', () => {
   const mockOnSendMessage = vi.fn();
   const mockOnTyping = vi.fn();
@@ -335,20 +344,20 @@ describe('MessageComposer', () => {
       const emojiButton = screen.getByLabelText('Open emoji picker');
 
       // Emoji picker should not be visible initially
-      expect(document.querySelector('.EmojiPickerReact')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
 
       await user.click(emojiButton);
 
       // Should show emoji picker
       await waitFor(() => {
-        expect(document.querySelector('.EmojiPickerReact')).toBeInTheDocument();
+        expect(screen.getByTestId('emoji-picker')).toBeInTheDocument();
       });
 
       await user.click(emojiButton);
 
       // Should hide emoji picker
       await waitFor(() => {
-        expect(document.querySelector('.EmojiPickerReact')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
       });
     });
 
@@ -366,7 +375,7 @@ describe('MessageComposer', () => {
       const emojiButton = screen.getByLabelText('Open emoji picker');
       await user.click(emojiButton);
 
-      expect(document.querySelector('.EmojiPickerReact')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('emoji-picker')).not.toBeInTheDocument();
     });
   });
 
