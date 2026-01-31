@@ -71,6 +71,14 @@ public class BackupService : IBackupService
                 throw new InvalidOperationException("Backup storage is not configured");
             }
 
+            // Check if already cancelled before starting
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("Backup was cancelled before starting");
+                // Return backup with InProgress status as it was created but not completed
+                return backup;
+            }
+
             await _containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
 
             var backupDate = backup.CreatedAt.ToString("yyyy-MM-dd");
@@ -94,6 +102,11 @@ public class BackupService : IBackupService
             
             _logger.LogInformation("Backup completed successfully: {FilePath}, Size: {Size} bytes", backup.FilePath, backup.Size);
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Backup was cancelled during execution");
+            // Keep status as InProgress since it was cancelled mid-operation
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Backup failed");
@@ -101,19 +114,44 @@ public class BackupService : IBackupService
             backup.ErrorMessage = ex.Message;
         }
 
-        await _backupsCollection.InsertOneAsync(backup, cancellationToken: cancellationToken);
+        try
+        {
+            await _backupsCollection.InsertOneAsync(backup, cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // If cancelled during insert, log but don't throw - backup object is still valid
+            _logger.LogWarning("Backup record insertion was cancelled, backup object not persisted to database");
+        }
+        catch (Exception ex)
+        {
+            // If we can't save the backup record for other reasons, just log it
+            _logger.LogError(ex, "Failed to save backup record");
+        }
+        
         return backup;
     }
 
     /// <inheritdoc/>
     public async Task<IEnumerable<Backup>> ListBackupsAsync(CancellationToken cancellationToken = default)
     {
-        var backups = await _backupsCollection
-            .Find(_ => true)
-            .SortByDescending(b => b.CreatedAt)
-            .ToListAsync(cancellationToken);
-        
-        return backups;
+        try
+        {
+            var backups = await _backupsCollection
+                .Find(_ => true)
+                .SortByDescending(b => b.CreatedAt)
+                .ToListAsync(cancellationToken);
+            
+            return backups;
+        }
+        catch (OperationCanceledException)
+        {
+            // Return empty list if operation was cancelled to allow graceful degradation
+            // Caller can check cancellation token if they need to distinguish between
+            // "no backups" and "operation cancelled"
+            _logger.LogWarning("List backups operation was cancelled");
+            return new List<Backup>();
+        }
     }
 
     /// <inheritdoc/>
