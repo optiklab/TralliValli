@@ -56,6 +56,7 @@ test.describe('Logout', () => {
     await page.goto('/');
 
     // Check that we have some session/auth data before logout
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const hasAuthData = await page.evaluate(() => {
       return (
         localStorage.getItem('auth') !== null ||
@@ -179,6 +180,7 @@ test.describe('Logout', () => {
 
     // Check if connected (this depends on app exposing connection state)
     const isConnectedBefore = await page
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .evaluate(() => {
         return (window as any).signalRConnected === true;
       })
@@ -201,6 +203,7 @@ test.describe('Logout', () => {
       await page.waitForURL(/login|signin/i, { timeout: 10000 });
 
       // Connection should be closed
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const isConnectedAfter = await page
         .evaluate(() => {
           return (window as any).signalRConnected === true;
