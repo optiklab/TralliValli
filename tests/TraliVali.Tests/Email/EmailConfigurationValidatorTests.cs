@@ -383,7 +383,7 @@ public class EmailConfigurationValidatorTests
     }
 
     [Fact]
-    public async Task StartAsync_ShouldAcceptWhitespaceSenderAddress()
+    public async Task StartAsync_ShouldRejectWhitespaceSenderAddress()
     {
         // Arrange
         var config = new AzureCommunicationEmailConfiguration
