@@ -38,7 +38,6 @@ jobs:
         path: ./TestResults
 
   e2e-tests:
-    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read

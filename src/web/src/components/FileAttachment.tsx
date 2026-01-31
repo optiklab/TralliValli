@@ -49,8 +49,7 @@ export function FileAttachment({
     try {
       await downloadFile(file.id, file.conversationId, encryptionMetadata);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Failed to download file';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download file';
       setDownloadError(errorMessage);
       console.error('Failed to download file:', error);
     }

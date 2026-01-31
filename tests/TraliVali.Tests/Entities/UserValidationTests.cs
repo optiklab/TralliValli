@@ -1,4 +1,5 @@
 using TraliVali.Domain.Entities;
+using TraliVali.Tests.Data.Factories;
 
 namespace TraliVali.Tests.Entities;
 
@@ -11,13 +12,7 @@ public class UserValidationTests
     public void GivenValidUser_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.BuildValid();
 
         // Act
         var errors = user.Validate();
@@ -30,13 +25,9 @@ public class UserValidationTests
     public void GivenEmptyEmail_WhenValidating_ThenReturnsEmailRequiredError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithEmail("")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -49,13 +40,9 @@ public class UserValidationTests
     public void GivenInvalidEmail_WhenValidating_ThenReturnsEmailFormatInvalidError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "invalid-email",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithEmail("invalid-email")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -68,13 +55,9 @@ public class UserValidationTests
     public void GivenEmptyDisplayName_WhenValidating_ThenReturnsDisplayNameRequiredError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithDisplayName("")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -87,13 +70,9 @@ public class UserValidationTests
     public void GivenDisplayNameTooLong_WhenValidating_ThenReturnsDisplayNameTooLongError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = new string('A', 101),
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithDisplayName(new string('A', 101))
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -106,13 +85,9 @@ public class UserValidationTests
     public void GivenEmptyPasswordHash_WhenValidating_ThenReturnsPasswordHashRequiredError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            PasswordHash = "",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithPasswordHash("")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -125,13 +100,9 @@ public class UserValidationTests
     public void GivenEmptyPublicKey_WhenValidating_ThenReturnsPublicKeyRequiredError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = ""
-        };
+        var user = UserFactory.Create()
+            .WithPublicKey("")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -144,13 +115,7 @@ public class UserValidationTests
     public void GivenMultipleInvalidFields_WhenValidating_ThenReturnsMultipleErrors()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "",
-            DisplayName = "",
-            PasswordHash = "",
-            PublicKey = ""
-        };
+        var user = UserFactory.BuildInvalid();
 
         // Act
         var errors = user.Validate();
@@ -167,13 +132,9 @@ public class UserValidationTests
     public void GivenEmailWithSpaces_WhenValidating_ThenReturnsEmailFormatInvalidError()
     {
         // Arrange
-        var user = new User
-        {
-            Email = "test @example.com",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.Create()
+            .WithEmail("test @example.com")
+            .Build();
 
         // Act
         var errors = user.Validate();
@@ -186,13 +147,7 @@ public class UserValidationTests
     public void GivenDefaultUserRole_WhenCreated_ThenRoleIsUser()
     {
         // Arrange & Act
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.BuildValid();
 
         // Assert
         Assert.Equal("user", user.Role);
@@ -202,13 +157,7 @@ public class UserValidationTests
     public void GivenDefaultIsActive_WhenCreated_ThenIsActiveIsTrue()
     {
         // Arrange & Act
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            PasswordHash = "hashed_password_123",
-            PublicKey = "public_key_123"
-        };
+        var user = UserFactory.BuildValid();
 
         // Assert
         Assert.True(user.IsActive);

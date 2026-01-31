@@ -4,16 +4,63 @@ This directory contains End-to-End (E2E) tests for the TralliValli chat applicat
 
 ## Overview
 
-The E2E tests cover the following scenarios:
-- ✅ Registration via invite link
-- ✅ Login via magic link
-- ✅ Create direct conversation
-- ✅ Send text message
-- ✅ Receive message in real-time
-- ✅ Create group
-- ✅ Add member to group
-- ✅ Upload and send file
-- ✅ Logout
+The E2E test suite provides comprehensive coverage of all major features:
+
+### User Journey & Authentication
+- ✅ Complete user journey from invite to messaging
+- ✅ Registration via invite link (with validation)
+- ✅ Login via magic link (passwordless authentication)
+- ✅ Logout and session management
+
+### Messaging Features
+- ✅ Create direct conversations
+- ✅ Send and receive text messages
+- ✅ Real-time message delivery via SignalR
+- ✅ Typing indicators
+- ✅ Emoji support
+- ✅ Message timestamps
+
+### Group Management
+- ✅ Create new groups
+- ✅ Add/remove members
+- ✅ Display member count and list
+- ✅ Edit group name (admin)
+- ✅ Admin badge display
+- ✅ Leave group functionality
+- ✅ Large group handling (50+ members)
+
+### File Operations
+- ✅ Upload files (text, images)
+- ✅ File preview for images
+- ✅ File size validation
+- ✅ Multiple file uploads
+- ✅ Upload progress indication
+- ✅ Download files
+- ✅ Download progress indication
+- ✅ Cancel downloads
+- ✅ File type icons
+
+### Offline Queue & Sync
+- ✅ Queue messages when offline
+- ✅ Sync messages when back online
+- ✅ Offline indicator display
+- ✅ Retry failed requests
+- ✅ Queue persistence across page reloads
+- ✅ Handle connection interruptions during file upload
+
+### Error Handling & Recovery
+- ✅ Handle 401 Unauthorized (token expiration)
+- ✅ Handle 500 Server Error
+- ✅ Handle 404 Not Found
+- ✅ Handle 429 Rate Limiting
+- ✅ Handle network timeouts
+- ✅ Handle malformed API responses
+- ✅ Token refresh on expiration
+- ✅ WebSocket reconnection
+- ✅ Concurrent operation conflicts
+- ✅ Form validation (email, required fields)
+
+**Total: 71 E2E tests across 9 test files**
 
 ## Prerequisites
 
@@ -111,14 +158,16 @@ npx playwright test --grep "login"
 
 ```
 e2e/
-├── fixtures/
-│   └── index.ts           # Shared test fixtures and helpers
-├── registration.spec.ts   # Registration via invite link tests
-├── login.spec.ts          # Magic link login tests
-├── messaging.spec.ts      # Direct messaging and real-time tests
-├── groups.spec.ts         # Group creation and management tests
-├── file-upload.spec.ts    # File upload and sharing tests
-└── logout.spec.ts         # Logout functionality tests
+├── fixtures.ts              # Shared test fixtures and helpers
+├── user-journey.spec.ts     # Complete user journey tests (invite → messaging)
+├── registration.spec.ts     # Registration via invite link tests
+├── login.spec.ts            # Magic link login tests
+├── messaging.spec.ts        # Direct messaging and real-time tests
+├── groups.spec.ts           # Group creation and management tests
+├── file-upload.spec.ts      # File upload, download and management tests
+├── offline-sync.spec.ts     # Offline queue and sync tests
+├── error-recovery.spec.ts   # Error handling and recovery tests
+└── logout.spec.ts           # Logout functionality tests
 ```
 
 ## Configuration

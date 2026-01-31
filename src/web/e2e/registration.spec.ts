@@ -9,7 +9,9 @@ import { test, expect } from './fixtures';
 /**
  * Helper to mock successful invite validation
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mockValidInvite(page: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.route('**/auth/invite/**', async (route: any) => {
     await route.fulfill({
       status: 200,
@@ -26,7 +28,9 @@ async function mockValidInvite(page: any) {
 /**
  * Helper to mock invalid invite validation
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mockInvalidInvite(page: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.route('**/auth/invite/**', async (route: any) => {
     await route.fulfill({
       status: 404,
@@ -42,7 +46,9 @@ async function mockInvalidInvite(page: any) {
 /**
  * Helper to mock successful registration
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mockSuccessfulRegistration(page: any) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await page.route('**/auth/register', async (route: any) => {
     await route.fulfill({
       status: 200,
@@ -133,6 +139,7 @@ test.describe('Registration via Invite Link', () => {
 
     // Mock the invite validation API to return success
     await mockValidInvite(page);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     // Mock the registration API - track if it gets called
     let registrationAttempts = 0;

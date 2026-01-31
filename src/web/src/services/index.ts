@@ -65,9 +65,4 @@ export {
   type EncryptedFileMetadata,
 } from './fileEncryption';
 
-export {
-  FileDownloadService,
-  type DownloadProgress,
-  type DownloadOptions,
-} from './fileDownload';
-
+export { FileDownloadService, type DownloadProgress, type DownloadOptions } from './fileDownload';

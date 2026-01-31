@@ -10,13 +10,13 @@
  */
 
 import { apiClient } from './api';
+import { FileEncryptionService, type EncryptedFileMetadata } from './fileEncryption';
 import type {
   PresignedUrlRequest,
   PresignedUrlResponse,
   UploadProgress,
   FileMetadata,
 } from '@/types/api';
-import { FileEncryptionService, type EncryptedFileMetadata } from './fileEncryption';
 
 // ============================================================================
 // Constants
