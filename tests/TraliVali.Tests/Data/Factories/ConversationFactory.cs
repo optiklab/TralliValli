@@ -202,7 +202,7 @@ public class ConversationFactory
     {
         return Create()
             .AsDirect()
-            .WithName($"Direct: {userId1.Substring(0, 8)} - {userId2.Substring(0, 8)}")
+            .WithName($"Direct: {userId1[..8]} - {userId2[..8]}")
             .WithParticipant(userId1)
             .WithParticipant(userId2)
             .Build();

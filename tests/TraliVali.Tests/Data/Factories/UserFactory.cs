@@ -9,7 +9,7 @@ namespace TraliVali.Tests.Data.Factories;
 public class UserFactory
 {
     private string _id = ObjectId.GenerateNewId().ToString();
-    private string _email = $"test.user.{Guid.NewGuid().ToString().Substring(0, 8)}@example.com";
+    private string _email = $"test.user.{Guid.NewGuid().ToString()[..8]}@example.com";
     private string _displayName = "Test User";
     private string _passwordHash = "hashed_password_123";
     private string _publicKey = "public_key_123";
