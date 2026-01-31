@@ -70,7 +70,6 @@ test.describe('Error Handling and Recovery', () => {
     });
 
     // Mock some API calls to return 500
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let errorCallCount = 0;
     await page.route('**/api/messages/**', async (route) => {
       errorCallCount++;
@@ -216,12 +215,8 @@ test.describe('Error Handling and Recovery', () => {
       expect(url).toContain('register');
 
       // Or check for error message
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const errorMsg = page.locator('text=/invalid.*email|enter.*valid.*email/i');
-      const hasError = await errorMsg
-        .first()
-        .isVisible()
-        .catch(() => false);
+      await errorMsg.first().isVisible().catch(() => false);
 
       // Clear the field for next iteration
       await emailInput.clear();

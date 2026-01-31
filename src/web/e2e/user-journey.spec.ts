@@ -21,11 +21,6 @@ test.describe('Complete User Journey', () => {
       email: `user1-${timestamp}@example.com`,
       displayName: `User One ${timestamp}`,
     };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const user2 = {
-      email: `user2-${timestamp}@example.com`,
-      displayName: `User Two ${timestamp}`,
-    };
 
     // Mock API responses for invite validation
     await page.route('**/auth/invite/**', async (route) => {

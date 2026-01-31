@@ -92,7 +92,6 @@ test.describe('Offline Queue and Sync', () => {
 
     // Wait for sync - message should be sent
     await page.waitForTimeout(3000);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
     // Check if message status changed from pending to sent
     // or offline indicator disappeared
@@ -256,10 +255,9 @@ test.describe('Offline Queue and Sync', () => {
 
     // Check if messages appear in order
     // This is a best-effort check as it depends on app implementation
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const msg of messages) {
       const messageElement = page.locator(`text="${msg}"`);
-      const isVisible = await messageElement.isVisible().catch(() => false);
+      await messageElement.isVisible().catch(() => false);
       // We just verify messages exist, order verification would need more complex logic
     }
   });
