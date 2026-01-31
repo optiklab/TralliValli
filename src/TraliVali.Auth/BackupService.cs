@@ -116,11 +116,16 @@ public class BackupService : IBackupService
 
         try
         {
-            await _backupsCollection.InsertOneAsync(backup, cancellationToken: default); // Use default token to ensure we save the record
+            await _backupsCollection.InsertOneAsync(backup, cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // If cancelled during insert, log but don't throw - backup object is still valid
+            _logger.LogWarning("Backup record insertion was cancelled, backup object not persisted to database");
         }
         catch (Exception ex)
         {
-            // If we can't save the backup record, just log it
+            // If we can't save the backup record for other reasons, just log it
             _logger.LogError(ex, "Failed to save backup record");
         }
         
@@ -141,7 +146,10 @@ public class BackupService : IBackupService
         }
         catch (OperationCanceledException)
         {
-            // Return empty list if operation was cancelled
+            // Return empty list if operation was cancelled to allow graceful degradation
+            // Caller can check cancellation token if they need to distinguish between
+            // "no backups" and "operation cancelled"
+            _logger.LogWarning("List backups operation was cancelled");
             return new List<Backup>();
         }
     }
