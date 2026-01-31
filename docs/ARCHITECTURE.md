@@ -526,7 +526,7 @@ TralliValli follows a **layered architecture** pattern with clear separation of 
 - **Cross-platform**: Runs on Windows, Linux, macOS - essential for Docker deployment
 - **Rich Ecosystem**: Extensive library support for cryptography, JWT, SignalR
 - **Type Safety**: Strong typing reduces runtime errors
-- **Long-term Support**: .NET 8 is an LTS release (supported until November 2026)
+- **Long-term Support**: .NET 8 is an LTS release (3-year support cycle through November 2026)
 
 ### Database: MongoDB
 
