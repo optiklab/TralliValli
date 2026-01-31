@@ -42,11 +42,7 @@ export function useFileDownload(options?: UseFileDownloadOptions): UseFileDownlo
   const [error, setError] = useState<Error | null>(null);
 
   const downloadFile = useCallback(
-    async (
-      fileId: string,
-      conversationId: string,
-      encryptionMetadata?: EncryptedFileMetadata
-    ) => {
+    async (fileId: string, conversationId: string, encryptionMetadata?: EncryptedFileMetadata) => {
       setIsDownloading(true);
       setProgress(null);
       setError(null);

@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FileDownloadService } from './fileDownload';
 import { FileEncryptionService } from './fileEncryption';
 import { apiClient } from './api';
-import type { FileMetadata } from '@/types/api';
 import type { KeyManagementService } from './keyManagement';
 import { generateKey } from './aesGcmEncryption';
+import type { FileMetadata } from '@/types/api';
 
 // Mock API client
 vi.mock('./api', () => ({
