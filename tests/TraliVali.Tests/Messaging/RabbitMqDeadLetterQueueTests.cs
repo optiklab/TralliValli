@@ -8,6 +8,7 @@ namespace TraliVali.Tests.Messaging;
 /// <summary>
 /// Integration tests for RabbitMQ dead-letter queue functionality using Testcontainers
 /// </summary>
+[Collection("Sequential")]
 public class RabbitMqDeadLetterQueueTests : IClassFixture<RabbitMqFixture>
 {
     private readonly RabbitMqFixture _fixture;
