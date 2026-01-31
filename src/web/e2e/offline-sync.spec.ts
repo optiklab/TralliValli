@@ -1,4 +1,6 @@
 import { test, expect } from './fixtures';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * E2E Test: Offline Queue and Sync
@@ -271,8 +273,6 @@ test.describe('Offline Queue and Sync', () => {
     }
 
     // Create a test file
-    const fs = require('fs');
-    const path = require('path');
     const testFile = path.join('/tmp', `upload-test-${Date.now()}.txt`);
     fs.writeFileSync(testFile, 'Test file for upload interruption');
 

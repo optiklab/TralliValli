@@ -1,5 +1,5 @@
-import path from 'path';
-import fs from 'fs';
+import * as path from 'path';
+import * as fs from 'fs';
 import { test, expect } from './fixtures';
 
 /**
@@ -479,8 +479,6 @@ test.describe('File Download and Management', () => {
       await conversation.click();
 
       // Create a very large file (simulate)
-      const fs = require('fs');
-      const path = require('path');
       const largeFile = path.join('/tmp', `huge-file-${Date.now()}.bin`);
       
       // Create 100MB file (may be above limit)

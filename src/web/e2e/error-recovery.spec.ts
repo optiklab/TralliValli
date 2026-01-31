@@ -426,7 +426,6 @@ test.describe('Error Handling and Recovery', () => {
     await page.waitForLoadState('networkidle');
 
     // Simulate WebSocket disconnection by going offline briefly
-    const { chromium } = require('@playwright/test');
     await page.context().setOffline(true);
     await page.waitForTimeout(2000);
 
