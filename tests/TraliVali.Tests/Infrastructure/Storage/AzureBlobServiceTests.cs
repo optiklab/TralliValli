@@ -451,4 +451,176 @@ public class AzureBlobServiceTests : IAsyncLifetime
         Assert.Single(februaryArchives);
         Assert.Single(marchArchives);
     }
+
+    [Fact]
+    public void GenerateUploadUrl_ShouldGenerateValidUrl_WhenBlobPathIsValid()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/test-upload.json";
+
+        // Act
+        var uploadUrl = _blobService!.GenerateUploadUrl(blobPath);
+
+        // Assert
+        Assert.NotNull(uploadUrl);
+        Assert.NotEmpty(uploadUrl);
+        Assert.Contains(blobPath, uploadUrl);
+        Assert.Contains("sig=", uploadUrl); // SAS token signature
+        Assert.Contains("se=", uploadUrl); // Expiry time
+        Assert.Contains("sp=", uploadUrl); // Permissions
+    }
+
+    [Fact]
+    public void GenerateUploadUrl_ShouldGenerateUrlWithCustomExpiry()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/test-upload-custom.json";
+        var expiresIn = TimeSpan.FromMinutes(30);
+
+        // Act
+        var uploadUrl = _blobService!.GenerateUploadUrl(blobPath, expiresIn);
+
+        // Assert
+        Assert.NotNull(uploadUrl);
+        Assert.NotEmpty(uploadUrl);
+        Assert.Contains(blobPath, uploadUrl);
+        Assert.Contains("sig=", uploadUrl);
+        Assert.Contains("se=", uploadUrl);
+    }
+
+    [Fact]
+    public void GenerateUploadUrl_ShouldThrowArgumentException_WhenBlobPathIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _blobService!.GenerateUploadUrl(null!));
+    }
+
+    [Fact]
+    public void GenerateUploadUrl_ShouldThrowArgumentException_WhenBlobPathIsEmpty()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _blobService!.GenerateUploadUrl(string.Empty));
+    }
+
+    [Fact]
+    public void GenerateDownloadUrl_ShouldGenerateValidUrl_WhenBlobPathIsValid()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/test-download.json";
+
+        // Act
+        var downloadUrl = _blobService!.GenerateDownloadUrl(blobPath);
+
+        // Assert
+        Assert.NotNull(downloadUrl);
+        Assert.NotEmpty(downloadUrl);
+        Assert.Contains(blobPath, downloadUrl);
+        Assert.Contains("sig=", downloadUrl); // SAS token signature
+        Assert.Contains("se=", downloadUrl); // Expiry time
+        Assert.Contains("sp=", downloadUrl); // Permissions
+    }
+
+    [Fact]
+    public void GenerateDownloadUrl_ShouldGenerateUrlWithCustomExpiry()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/test-download-custom.json";
+        var expiresIn = TimeSpan.FromHours(2);
+
+        // Act
+        var downloadUrl = _blobService!.GenerateDownloadUrl(blobPath, expiresIn);
+
+        // Assert
+        Assert.NotNull(downloadUrl);
+        Assert.NotEmpty(downloadUrl);
+        Assert.Contains(blobPath, downloadUrl);
+        Assert.Contains("sig=", downloadUrl);
+        Assert.Contains("se=", downloadUrl);
+    }
+
+    [Fact]
+    public void GenerateDownloadUrl_ShouldThrowArgumentException_WhenBlobPathIsNull()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _blobService!.GenerateDownloadUrl(null!));
+    }
+
+    [Fact]
+    public void GenerateDownloadUrl_ShouldThrowArgumentException_WhenBlobPathIsEmpty()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            _blobService!.GenerateDownloadUrl(string.Empty));
+    }
+
+    [Fact]
+    public async Task GenerateUploadUrl_ShouldAllowUploadUsingPresignedUrl()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/presigned-upload-test.json";
+        var content = "{\"test\": \"presigned upload\"}";
+        var uploadUrl = _blobService!.GenerateUploadUrl(blobPath);
+
+        // Act - Upload using the presigned URL
+        using var httpClient = new HttpClient();
+        using var contentStream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        using var httpContent = new StreamContent(contentStream);
+        httpContent.Headers.Add("x-ms-blob-type", "BlockBlob");
+        
+        var response = await httpClient.PutAsync(uploadUrl, httpContent);
+
+        // Assert
+        Assert.True(response.IsSuccessStatusCode, $"Upload failed with status {response.StatusCode}");
+        
+        // Verify the blob was uploaded by downloading it
+        var downloadedStream = await _blobService.DownloadArchiveAsync(blobPath);
+        using var reader = new StreamReader(downloadedStream);
+        var downloadedContent = await reader.ReadToEndAsync();
+        Assert.Equal(content, downloadedContent);
+    }
+
+    [Fact]
+    public async Task GenerateDownloadUrl_ShouldAllowDownloadUsingPresignedUrl()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/presigned-download-test.json";
+        var content = "{\"test\": \"presigned download\"}";
+        
+        // Upload the blob first
+        using var uploadStream = new MemoryStream(Encoding.UTF8.GetBytes(content));
+        await _blobService!.UploadArchiveAsync(uploadStream, blobPath);
+        
+        // Generate download URL
+        var downloadUrl = _blobService.GenerateDownloadUrl(blobPath);
+
+        // Act - Download using the presigned URL
+        using var httpClient = new HttpClient();
+        var response = await httpClient.GetAsync(downloadUrl);
+
+        // Assert
+        Assert.True(response.IsSuccessStatusCode, $"Download failed with status {response.StatusCode}");
+        
+        var downloadedContent = await response.Content.ReadAsStringAsync();
+        Assert.Equal(content, downloadedContent);
+    }
+
+    [Fact]
+    public void GenerateUploadUrl_And_GenerateDownloadUrl_ShouldGenerateDifferentUrls()
+    {
+        // Arrange
+        var blobPath = "archives/2024/01/test-different-urls.json";
+
+        // Act
+        var uploadUrl = _blobService!.GenerateUploadUrl(blobPath);
+        var downloadUrl = _blobService!.GenerateDownloadUrl(blobPath);
+
+        // Assert
+        Assert.NotEqual(uploadUrl, downloadUrl);
+        // Both should contain the blob path but have different permissions
+        Assert.Contains(blobPath, uploadUrl);
+        Assert.Contains(blobPath, downloadUrl);
+    }
 }
