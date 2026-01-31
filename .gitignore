@@ -415,3 +415,4 @@ src/web/.vite/
 src/web/test-results/
 src/web/playwright-report/
 src/web/playwright/.cache/
+test-output.txt

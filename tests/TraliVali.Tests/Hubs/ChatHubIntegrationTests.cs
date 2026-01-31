@@ -217,6 +217,9 @@ public class ChatHubIntegrationTests : IAsyncLifetime
         // Both clients join the same conversation
         await client1.InvokeAsync("JoinConversation", conversationId);
         await client2.InvokeAsync("JoinConversation", conversationId);
+        
+        // Wait for group membership to be fully propagated in SignalR
+        await Task.Delay(100);
 
         // Act - Client 1 sends a message
         await client1.InvokeAsync("SendMessage", conversationId, messageId, content);
