@@ -1538,8 +1538,11 @@ The complete OpenAPI 3.0 specification is available at:
 
 ### Interactive API Explorer
 
-Swagger UI is available in development mode:
+Swagger UI is available in all environments:
 - Development: `http://localhost:5000/swagger`
+- Production: `https://your-domain.com/swagger`
+
+**Note**: In production, consider restricting access to Swagger UI using authentication or IP whitelisting for security.
 
 ### WebSocket (SignalR) Hub
 
@@ -1556,4 +1559,4 @@ For API support or questions:
 
 ---
 
-*Last Updated: January 31, 2024*
+*Last Updated: January 31, 2026*
