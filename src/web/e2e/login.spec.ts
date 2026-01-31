@@ -73,7 +73,7 @@ test.describe('Login via Magic Link', () => {
     await expect(loadingButton).toBeVisible({ timeout: 2000 });
   });
 
-  test('should verify magic link and authenticate user', async ({ page, testUser }) => {
+  test('should verify magic link and authenticate user', async ({ page }) => {
     // This test simulates clicking on a magic link
     // In real scenario, the magic link would be extracted from email
 

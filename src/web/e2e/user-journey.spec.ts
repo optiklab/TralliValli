@@ -14,13 +14,14 @@ import { test, expect } from './fixtures';
  */
 
 test.describe('Complete User Journey', () => {
-  test('should complete full user journey from invite to messaging', async ({ page, context }) => {
+  test('should complete full user journey from invite to messaging', async ({ page }) => {
     // Generate unique test data
     const timestamp = Date.now();
     const user1 = {
       email: `user1-${timestamp}@example.com`,
       displayName: `User One ${timestamp}`,
     };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const user2 = {
       email: `user2-${timestamp}@example.com`,
       displayName: `User Two ${timestamp}`,
@@ -43,7 +44,7 @@ test.describe('Complete User Journey', () => {
     await page.route('**/auth/register', async (route) => {
       const request = route.request();
       const postData = request.postDataJSON();
-      
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -223,7 +224,7 @@ test.describe('Complete User Journey', () => {
 
     // Register
     await page.goto(`/register?invite=test-${timestamp}`);
-    
+
     const emailInput = page.locator('input[name="email"], input[type="email"]');
     await emailInput.waitFor({ state: 'visible', timeout: 10000 });
     await expect(emailInput).toBeEnabled({ timeout: 10000 });
@@ -239,11 +240,11 @@ test.describe('Complete User Journey', () => {
     // Should be logged in - check for app UI
     const appElement = page.locator('main, [role="main"], .app-container, .chat-container');
     const isVisible = await appElement.isVisible({ timeout: 5000 }).catch(() => false);
-    
+
     // If we see the app or a "magic link sent" message, test passes
     const magicLinkMessage = page.locator('text=/magic link|check.*email/i');
     const hasMagicLinkMessage = await magicLinkMessage.isVisible().catch(() => false);
-    
+
     expect(isVisible || hasMagicLinkMessage).toBeTruthy();
   });
 

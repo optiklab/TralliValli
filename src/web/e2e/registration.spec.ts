@@ -9,6 +9,7 @@ import { test, expect } from './fixtures';
 /**
  * Helper to mock successful invite validation
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function mockValidInvite(page: any) {
   await page.route('**/auth/invite/**', async (route: any) => {
     await route.fulfill({
@@ -25,6 +26,7 @@ async function mockValidInvite(page: any) {
 
 /**
  * Helper to mock invalid invite validation
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
  */
 async function mockInvalidInvite(page: any) {
   await page.route('**/auth/invite/**', async (route: any) => {
@@ -40,6 +42,7 @@ async function mockInvalidInvite(page: any) {
 }
 
 /**
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
  * Helper to mock successful registration
  */
 async function mockSuccessfulRegistration(page: any) {
@@ -133,6 +136,7 @@ test.describe('Registration via Invite Link', () => {
 
     // Mock the invite validation API to return success
     await mockValidInvite(page);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     // Mock the registration API - track if it gets called
     let registrationAttempts = 0;

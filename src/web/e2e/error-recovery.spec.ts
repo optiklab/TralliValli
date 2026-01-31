@@ -44,9 +44,12 @@ test.describe('Error Handling and Recovery', () => {
     // Check for login page redirect or error message
     const url = page.url();
     const isLoginPage = url.includes('/login') || url.endsWith('/');
-    
+
     const errorMessage = page.locator('text=/unauthorized|session.*expired|login.*again/i');
-    const hasErrorMessage = await errorMessage.first().isVisible().catch(() => false);
+    const hasErrorMessage = await errorMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // Should either redirect to login or show error
     expect(isLoginPage || hasErrorMessage).toBeTruthy();
@@ -67,6 +70,7 @@ test.describe('Error Handling and Recovery', () => {
     });
 
     // Mock some API calls to return 500
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let errorCallCount = 0;
     await page.route('**/api/messages/**', async (route) => {
       errorCallCount++;
@@ -87,8 +91,11 @@ test.describe('Error Handling and Recovery', () => {
     const errorNotification = page.locator(
       'text=/error|failed|something went wrong|server error/i, [role="alert"], .error-message'
     );
-    
-    const hasError = await errorNotification.first().isVisible({ timeout: 5000 }).catch(() => false);
+
+    const hasError = await errorNotification
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
 
     // App should handle error gracefully (show message or continue functioning)
     const appContainer = page.locator('main, [role="main"], .app-container');
@@ -119,8 +126,13 @@ test.describe('Error Handling and Recovery', () => {
     // Should show 404 error or redirect
     await page.waitForTimeout(2000);
 
-    const notFoundMessage = page.locator('text=/not found|doesn.*t exist|invalid/i, [data-testid="404"]');
-    const hasNotFound = await notFoundMessage.first().isVisible().catch(() => false);
+    const notFoundMessage = page.locator(
+      'text=/not found|doesn.*t exist|invalid/i, [data-testid="404"]'
+    );
+    const hasNotFound = await notFoundMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     const url = page.url();
     const redirected = !url.includes('non-existent-id');
@@ -147,18 +159,21 @@ test.describe('Error Handling and Recovery', () => {
     await page.route('**/api/**', async (route) => {
       // Don't respond - let it timeout
       // Or delay significantly
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
       await route.abort('timedout');
     });
 
     await page.goto('/');
-    
+
     // Wait for timeout to occur
     await page.waitForTimeout(6000);
 
     // App should handle timeout - show error or retry
     const timeoutMessage = page.locator('text=/timeout|slow.*connection|taking.*longer/i');
-    const hasTimeout = await timeoutMessage.first().isVisible().catch(() => false);
+    const hasTimeout = await timeoutMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // App should either show timeout message or continue to function
     const appContainer = page.locator('main, [role="main"], .app-container');
@@ -201,8 +216,12 @@ test.describe('Error Handling and Recovery', () => {
       expect(url).toContain('register');
 
       // Or check for error message
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const errorMsg = page.locator('text=/invalid.*email|enter.*valid.*email/i');
-      const hasError = await errorMsg.first().isVisible().catch(() => false);
+      const hasError = await errorMsg
+        .first()
+        .isVisible()
+        .catch(() => false);
 
       // Clear the field for next iteration
       await emailInput.clear();
@@ -240,7 +259,10 @@ test.describe('Error Handling and Recovery', () => {
 
     // Check for error message or that app still functions
     const errorMessage = page.locator('text=/error|failed|invalid.*response/i, [role="alert"]');
-    const hasError = await errorMessage.first().isVisible().catch(() => false);
+    const hasError = await errorMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     const appContainer = page.locator('main, [role="main"], .app-container');
     const appVisible = await appContainer.isVisible().catch(() => false);
@@ -251,6 +273,7 @@ test.describe('Error Handling and Recovery', () => {
 
   test('should handle token refresh on expiration', async ({ page }) => {
     let tokenRefreshAttempted = false;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
     await page.evaluate(() => {
       const timestamp = Date.now();
@@ -336,14 +359,21 @@ test.describe('Error Handling and Recovery', () => {
       'text=/offline|no.*internet|no.*connection|check.*connection/i, .offline-banner'
     );
 
-    const hasOfflineMessage = await offlineMessage.first().isVisible({ timeout: 5000 }).catch(() => false);
+    const hasOfflineMessage = await offlineMessage
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
 
     // Restore connection
     await context.setOffline(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     await page.waitForTimeout(2000);
 
     // Message should disappear when back online
-    const stillOffline = await offlineMessage.first().isVisible().catch(() => false);
+    const stillOffline = await offlineMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // The offline behavior should be handled
     expect(typeof hasOfflineMessage).toBe('boolean');
@@ -382,14 +412,12 @@ test.describe('Error Handling and Recovery', () => {
 
     // Try to perform an operation that causes conflict
     const messageInput = page
-      .locator(
-        'textarea[placeholder*="message" i], input[placeholder*="message" i]'
-      )
+      .locator('textarea[placeholder*="message" i], input[placeholder*="message" i]')
       .first();
 
     if ((await messageInput.count()) > 0 && (await messageInput.isVisible())) {
       await messageInput.fill('Conflict test message');
-      
+
       const sendButton = page.locator('button:has-text("Send")').first();
       if ((await sendButton.count()) > 0) {
         await sendButton.click();
@@ -401,7 +429,10 @@ test.describe('Error Handling and Recovery', () => {
 
       // Should show error or handle conflict
       const errorMessage = page.locator('text=/error|conflict|failed/i, [role="alert"]');
-      const hasError = await errorMessage.first().isVisible().catch(() => false);
+      const hasError = await errorMessage
+        .first()
+        .isVisible()
+        .catch(() => false);
 
       // App should handle conflict gracefully
       expect(typeof hasError).toBe('boolean');
@@ -435,7 +466,10 @@ test.describe('Error Handling and Recovery', () => {
 
     // App should reconnect - check for connection status
     const reconnectMessage = page.locator('text=/reconnect|connected/i');
-    const hasReconnect = await reconnectMessage.first().isVisible().catch(() => false);
+    const hasReconnect = await reconnectMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // Or check that app is still functional
     const appContainer = page.locator('main, [role="main"], .app-container');
@@ -476,7 +510,10 @@ test.describe('Error Handling and Recovery', () => {
 
     // Should show rate limit message
     const rateLimitMessage = page.locator('text=/rate limit|too many|slow down|try again/i');
-    const hasMessage = await rateLimitMessage.first().isVisible().catch(() => false);
+    const hasMessage = await rateLimitMessage
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     const appContainer = page.locator('main, [role="main"], .app-container');
     const appVisible = await appContainer.isVisible().catch(() => false);

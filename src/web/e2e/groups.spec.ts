@@ -268,7 +268,7 @@ test.describe('Group - Advanced Features', () => {
 
         // Admin should see remove member button
         const canRemove = await removeMemberButton.isVisible().catch(() => false);
-        
+
         // This is conditional based on user role
         expect(typeof canRemove).toBe('boolean');
       }
@@ -293,7 +293,7 @@ test.describe('Group - Advanced Features', () => {
           .first();
 
         const canEdit = await editNameButton.isVisible({ timeout: 3000 }).catch(() => false);
-        
+
         if (canEdit) {
           await editNameButton.click();
 
@@ -319,7 +319,10 @@ test.describe('Group - Advanced Features', () => {
 
         // Look for admin indicator
         const adminBadge = page.locator('text=/admin|owner/i, .admin-badge, [data-role="admin"]');
-        const hasAdminBadge = await adminBadge.first().isVisible().catch(() => false);
+        const hasAdminBadge = await adminBadge
+          .first()
+          .isVisible()
+          .catch(() => false);
 
         // Should show admin indication for at least one member
         expect(typeof hasAdminBadge).toBe('boolean');
@@ -357,7 +360,10 @@ test.describe('Group - Advanced Features', () => {
         // Should handle large member list
         // Either with pagination, virtual scrolling, or load more button
         const membersList = page.locator('[role="list"], .members-list, .member-item');
-        const hasMembersList = await membersList.first().isVisible().catch(() => false);
+        const hasMembersList = await membersList
+          .first()
+          .isVisible()
+          .catch(() => false);
 
         expect(typeof hasMembersList).toBe('boolean');
       }

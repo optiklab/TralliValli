@@ -1,6 +1,6 @@
-import { test, expect } from './fixtures';
 import * as fs from 'fs';
 import * as path from 'path';
+import { test, expect } from './fixtures';
 
 /**
  * E2E Test: Offline Queue and Sync
@@ -75,7 +75,10 @@ test.describe('Offline Queue and Sync', () => {
     const offlineIndicator = page.locator(
       'text=/offline|no connection|pending|queued/i, [data-status="pending"], [data-status="queued"]'
     );
-    const hasOfflineIndicator = await offlineIndicator.first().isVisible().catch(() => false);
+    const hasOfflineIndicator = await offlineIndicator
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // Message should still be visible in UI even if pending
     const messageInUI = page.locator(`text="${offlineMessage}"`);
@@ -89,11 +92,15 @@ test.describe('Offline Queue and Sync', () => {
 
     // Wait for sync - message should be sent
     await page.waitForTimeout(3000);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
     // Check if message status changed from pending to sent
     // or offline indicator disappeared
-    const stillOffline = await offlineIndicator.first().isVisible().catch(() => false);
-    
+    const stillOffline = await offlineIndicator
+      .first()
+      .isVisible()
+      .catch(() => false);
+
     // After going online, offline indicators should disappear or reduce
     // This is a soft check as the app might have different UI patterns
   });
@@ -125,14 +132,21 @@ test.describe('Offline Queue and Sync', () => {
     );
 
     // Check if offline indicator appears
-    const hasIndicator = await offlineIndicator.first().isVisible({ timeout: 5000 }).catch(() => false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const hasIndicator = await offlineIndicator
+      .first()
+      .isVisible({ timeout: 5000 })
+      .catch(() => false);
 
     // Go back online
     await context.setOffline(false);
     await page.waitForTimeout(2000);
 
     // Indicator should disappear when back online
-    const stillHasIndicator = await offlineIndicator.first().isVisible().catch(() => false);
+    const stillHasIndicator = await offlineIndicator
+      .first()
+      .isVisible()
+      .catch(() => false);
 
     // The indicator logic should work - either showing offline or not showing when online
     // This is a basic connectivity test
@@ -145,7 +159,7 @@ test.describe('Offline Queue and Sync', () => {
     // Intercept API calls
     await page.route('**/api/**', async (route) => {
       apiCallCount++;
-      
+
       if (apiCallCount === 1) {
         // Simulate network error on first call
         await route.abort('failed');
@@ -225,7 +239,7 @@ test.describe('Offline Queue and Sync', () => {
     for (const msg of messages) {
       await page.waitForTimeout(500);
       await messageInput.fill(msg);
-      
+
       const sendButton = page.locator('button:has-text("Send"), button[type="submit"]').first();
       if ((await sendButton.count()) > 0 && (await sendButton.isVisible())) {
         await sendButton.click();
@@ -242,6 +256,7 @@ test.describe('Offline Queue and Sync', () => {
 
     // Check if messages appear in order
     // This is a best-effort check as it depends on app implementation
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const msg of messages) {
       const messageElement = page.locator(`text="${msg}"`);
       const isVisible = await messageElement.isVisible().catch(() => false);
@@ -338,7 +353,7 @@ test.describe('Offline Queue and Sync', () => {
     // Queue a message
     const persistMessage = `Persist test ${Date.now()}`;
     await messageInput.fill(persistMessage);
-    
+
     const sendButton = page.locator('button:has-text("Send"), button[type="submit"]').first();
     if ((await sendButton.count()) > 0 && (await sendButton.isVisible())) {
       await sendButton.click();
