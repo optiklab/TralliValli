@@ -510,5 +510,75 @@ public class NoOpNotificationServiceTests
             Times.AtLeastOnce);
     }
 
+    [Fact]
+    public async Task SendBatchNotificationsAsync_ShouldHandleDuplicateUserIds()
+    {
+        // Arrange
+        var userIds = new[] { "user1", "user2", "user1", "user3", "user2" };
+        var title = "Test Title";
+        var body = "Test Body";
+
+        // Act
+        await _service.SendBatchNotificationsAsync(userIds, title, body);
+
+        // Assert - Should complete successfully without deduplication
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("5 users")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendBatchNotificationsAsync_ShouldHandleVeryLargeBatch()
+    {
+        // Arrange - 10000 users
+        var userIds = new string[10000];
+        for (int i = 0; i < 10000; i++)
+        {
+            userIds[i] = $"user{i}";
+        }
+        var title = "Test Title";
+        var body = "Test Body";
+
+        // Act
+        await _service.SendBatchNotificationsAsync(userIds, title, body);
+
+        // Assert - Should complete successfully
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("10000 users")),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task SendBatchNotificationsAsync_ShouldHandleUserIdsWithSpecialCharacters()
+    {
+        // Arrange
+        var userIds = new[] { "user@123", "user#456", "user<script>", "user&test" };
+        var title = "Test Title";
+        var body = "Test Body";
+
+        // Act
+        await _service.SendBatchNotificationsAsync(userIds, title, body);
+
+        // Assert - Should complete without issues
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Information,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+    }
+
     #endregion
 }

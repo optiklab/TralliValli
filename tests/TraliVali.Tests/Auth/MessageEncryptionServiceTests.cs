@@ -532,5 +532,147 @@ public class MessageEncryptionServiceTests
         Assert.Equal(message, decryptedMessage);
     }
 
+    [Fact]
+    public async Task DecryptMessageAsync_ShouldHandleLargeMessages()
+    {
+        // Arrange - Create a large message (1 MB)
+        var largeMessage = new string('A', 1024 * 1024);
+        var conversationKey = new byte[32];
+        RandomNumberGenerator.Fill(conversationKey);
+
+        var iv = new byte[12];
+        RandomNumberGenerator.Fill(iv);
+
+        var plaintext = Encoding.UTF8.GetBytes(largeMessage);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[16];
+
+        using (var aes = new AesGcm(conversationKey, tag.Length))
+        {
+            aes.Encrypt(iv, plaintext, ciphertext, tag);
+        }
+
+        var encryptedContent = Convert.ToBase64String(ciphertext);
+        var ivBase64 = Convert.ToBase64String(iv);
+        var tagBase64 = Convert.ToBase64String(tag);
+
+        // Act
+        var result = await _service.DecryptMessageAsync(encryptedContent, conversationKey, ivBase64, tagBase64);
+
+        // Assert
+        Assert.Equal(largeMessage, result);
+    }
+
+    [Fact]
+    public async Task DecryptMessageAsync_ShouldThrowException_WhenEncryptingEmptyMessage()
+    {
+        // Arrange - Try to encrypt an empty message which produces empty ciphertext
+        var emptyMessage = "";
+        var conversationKey = new byte[32];
+        RandomNumberGenerator.Fill(conversationKey);
+
+        var iv = new byte[12];
+        RandomNumberGenerator.Fill(iv);
+
+        var plaintext = Encoding.UTF8.GetBytes(emptyMessage);
+        var ciphertext = new byte[plaintext.Length]; // Will be 0 length
+        var tag = new byte[16];
+
+        using (var aes = new AesGcm(conversationKey, tag.Length))
+        {
+            aes.Encrypt(iv, plaintext, ciphertext, tag);
+        }
+
+        var encryptedContent = Convert.ToBase64String(ciphertext); // Empty base64 string
+        var ivBase64 = Convert.ToBase64String(iv);
+        var tagBase64 = Convert.ToBase64String(tag);
+
+        // Act & Assert - Empty encrypted content should throw
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.DecryptMessageAsync(encryptedContent, conversationKey, ivBase64, tagBase64));
+    }
+
+    [Fact]
+    public async Task DecryptMessageAsync_ShouldHandleUnicodeCharacters()
+    {
+        // Arrange - Message with various Unicode characters
+        var unicodeMessage = "Hello 世界 🌍 Привет مرحبا";
+        var conversationKey = new byte[32];
+        RandomNumberGenerator.Fill(conversationKey);
+
+        var iv = new byte[12];
+        RandomNumberGenerator.Fill(iv);
+
+        var plaintext = Encoding.UTF8.GetBytes(unicodeMessage);
+        var ciphertext = new byte[plaintext.Length];
+        var tag = new byte[16];
+
+        using (var aes = new AesGcm(conversationKey, tag.Length))
+        {
+            aes.Encrypt(iv, plaintext, ciphertext, tag);
+        }
+
+        var encryptedContent = Convert.ToBase64String(ciphertext);
+        var ivBase64 = Convert.ToBase64String(iv);
+        var tagBase64 = Convert.ToBase64String(tag);
+
+        // Act
+        var result = await _service.DecryptMessageAsync(encryptedContent, conversationKey, ivBase64, tagBase64);
+
+        // Assert
+        Assert.Equal(unicodeMessage, result);
+    }
+
+    [Fact]
+    public async Task DeriveMasterKeyFromPasswordAsync_ShouldHandleLongPasswords()
+    {
+        // Arrange - Very long password
+        var longPassword = new string('A', 1000);
+        var salt = new byte[16];
+        RandomNumberGenerator.Fill(salt);
+        var saltBase64 = Convert.ToBase64String(salt);
+
+        // Act
+        var result = await _service.DeriveMasterKeyFromPasswordAsync(longPassword, saltBase64);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(32, result.Length);
+    }
+
+    [Fact]
+    public async Task DeriveMasterKeyFromPasswordAsync_ShouldHandleSpecialCharacters()
+    {
+        // Arrange - Password with special characters
+        var password = "P@ssw0rd!#$%^&*()_+-=[]{}|;:',.<>?/~`";
+        var salt = new byte[16];
+        RandomNumberGenerator.Fill(salt);
+        var saltBase64 = Convert.ToBase64String(salt);
+
+        // Act
+        var result = await _service.DeriveMasterKeyFromPasswordAsync(password, saltBase64);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(32, result.Length);
+    }
+
+    [Fact]
+    public async Task DeriveMasterKeyFromPasswordAsync_ShouldHandleUnicodePassword()
+    {
+        // Arrange - Password with Unicode characters
+        var password = "密码🔒Пароль";
+        var salt = new byte[16];
+        RandomNumberGenerator.Fill(salt);
+        var saltBase64 = Convert.ToBase64String(salt);
+
+        // Act
+        var result = await _service.DeriveMasterKeyFromPasswordAsync(password, saltBase64);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(32, result.Length);
+    }
+
     #endregion
 }
