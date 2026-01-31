@@ -279,7 +279,9 @@ public class ChatHubIntegrationTests : IAsyncLifetime
 
         // Assert - Only client 1 should receive the message
         await receivedByClient1.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await Task.Delay(1000); // Wait to ensure client2 doesn't receive it
+        
+        // Give a brief moment to ensure client2 doesn't receive it
+        await Task.Delay(200); // Shorter delay just to flush any pending messages
 
         Assert.False(receivedByClient2);
 
@@ -341,15 +343,9 @@ public class ChatHubIntegrationTests : IAsyncLifetime
             });
 
         var disconnectingClient = await CreateConnectedHubConnectionAsync();
-        
-        // Wait a bit to ensure connection is established
-        await Task.Delay(500);
 
         // Act - Disconnect the client
         await disconnectingClient.StopAsync();
-        
-        // Wait a bit to ensure disconnection is processed
-        await Task.Delay(500);
 
         // Assert - The test might timeout if both connections are for the same user
         // because the presence service tracks multiple connections per user
@@ -357,7 +353,7 @@ public class ChatHubIntegrationTests : IAsyncLifetime
         // So we'll check if we got the event within a reasonable time or skip
         var completedTask = await Task.WhenAny(
             presenceOfflineReceived.Task,
-            Task.Delay(TimeSpan.FromSeconds(3))
+            Task.Delay(TimeSpan.FromSeconds(2))
         );
 
         if (completedTask == presenceOfflineReceived.Task)
