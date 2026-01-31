@@ -64,6 +64,7 @@ public class MongoDbFixture : IAsyncLifetime
         await database.DropCollectionAsync("invites");
         await database.DropCollectionAsync("files");
         await database.DropCollectionAsync("backups");
+        await database.DropCollectionAsync("userKeyBackups");
 
         // Recreate indexes after cleanup
         await Context.CreateIndexesAsync();

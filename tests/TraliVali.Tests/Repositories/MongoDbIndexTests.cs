@@ -176,4 +176,57 @@ public class MongoDbIndexTests : IClassFixture<MongoDbFixture>
             await _fixture.Context.Invites.InsertOneAsync(invite2);
         });
     }
+
+    [Fact]
+    public async Task CreateIndexesAsync_ShouldCreateUserKeyBackupUserIdIndex()
+    {
+        // Arrange
+        await _fixture.CleanupAsync();
+
+        // Act
+        var indexes = await _fixture.Context.UserKeyBackups.Indexes.List().ToListAsync();
+
+        // Assert
+        Assert.NotNull(indexes);
+        // Should have at least the _id index and userId index
+        Assert.True(indexes.Count >= 2);
+
+        // Check for userId index
+        var userIdIndex = indexes.FirstOrDefault(i => 
+            i.Contains("name") && i["name"].AsString.Contains("userId"));
+        Assert.NotNull(userIdIndex);
+    }
+
+    [Fact]
+    public async Task UserKeyBackupUserIdIndex_ShouldBeUnique()
+    {
+        // Arrange
+        await _fixture.CleanupAsync();
+        var userId = "507f1f77bcf86cd799439011";
+        var backup1 = new UserKeyBackup
+        {
+            UserId = userId,
+            Version = 1,
+            EncryptedData = "data1==",
+            Iv = "iv1==",
+            Salt = "salt1=="
+        };
+        var backup2 = new UserKeyBackup
+        {
+            UserId = userId,
+            Version = 2,
+            EncryptedData = "data2==",
+            Iv = "iv2==",
+            Salt = "salt2=="
+        };
+
+        // Act & Assert
+        await _fixture.Context.UserKeyBackups.InsertOneAsync(backup1);
+        
+        // Should throw exception for duplicate userId
+        await Assert.ThrowsAsync<MongoWriteException>(async () =>
+        {
+            await _fixture.Context.UserKeyBackups.InsertOneAsync(backup2);
+        });
+    }
 }
