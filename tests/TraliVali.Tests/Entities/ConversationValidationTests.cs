@@ -3,12 +3,12 @@ using TraliVali.Domain.Entities;
 namespace TraliVali.Tests.Entities;
 
 /// <summary>
-/// Tests for Conversation entity validation
+/// Tests for Conversation entity validation following Given-When-Then pattern
 /// </summary>
 public class ConversationValidationTests
 {
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenConversationIsValid()
+    public void GivenValidConversation_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var conversation = new Conversation
@@ -29,7 +29,7 @@ public class ConversationValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenTypeIsEmpty()
+    public void GivenEmptyType_WhenValidating_ThenReturnsTypeRequiredError()
     {
         // Arrange
         var conversation = new Conversation
@@ -49,7 +49,7 @@ public class ConversationValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenParticipantsIsEmpty()
+    public void GivenEmptyParticipants_WhenValidating_ThenReturnsParticipantsRequiredError()
     {
         // Arrange
         var conversation = new Conversation
@@ -66,7 +66,7 @@ public class ConversationValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenRecentMessagesExceeds50()
+    public void GivenRecentMessagesExceeds50_WhenValidating_ThenReturnsRecentMessagesTooManyError()
     {
         // Arrange
         var conversation = new Conversation
@@ -87,7 +87,7 @@ public class ConversationValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnNoError_WhenRecentMessagesIsExactly50()
+    public void GivenRecentMessagesExactly50_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var conversation = new Conversation
@@ -105,5 +105,44 @@ public class ConversationValidationTests
 
         // Assert
         Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void GivenGroupConversation_WhenIsGroupIsTrue_ThenIsGroupPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var conversation = new Conversation
+        {
+            Type = "group",
+            Name = "My Group",
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = "507f1f77bcf86cd799439011" },
+                new Participant { UserId = "507f1f77bcf86cd799439022" }
+            },
+            IsGroup = true
+        };
+
+        // Assert
+        Assert.True(conversation.IsGroup);
+        Assert.Equal("My Group", conversation.Name);
+    }
+
+    [Fact]
+    public void GivenDirectConversation_WhenIsGroupIsFalse_ThenIsGroupPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var conversation = new Conversation
+        {
+            Type = "direct",
+            Participants = new List<Participant>
+            {
+                new Participant { UserId = "507f1f77bcf86cd799439011" }
+            },
+            IsGroup = false
+        };
+
+        // Assert
+        Assert.False(conversation.IsGroup);
     }
 }

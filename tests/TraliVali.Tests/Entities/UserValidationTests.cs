@@ -3,12 +3,12 @@ using TraliVali.Domain.Entities;
 namespace TraliVali.Tests.Entities;
 
 /// <summary>
-/// Tests for User entity validation
+/// Tests for User entity validation following Given-When-Then pattern
 /// </summary>
 public class UserValidationTests
 {
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenUserIsValid()
+    public void GivenValidUser_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var user = new User
@@ -27,7 +27,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenEmailIsEmpty()
+    public void GivenEmptyEmail_WhenValidating_ThenReturnsEmailRequiredError()
     {
         // Arrange
         var user = new User
@@ -46,7 +46,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenEmailIsInvalid()
+    public void GivenInvalidEmail_WhenValidating_ThenReturnsEmailFormatInvalidError()
     {
         // Arrange
         var user = new User
@@ -65,7 +65,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenDisplayNameIsEmpty()
+    public void GivenEmptyDisplayName_WhenValidating_ThenReturnsDisplayNameRequiredError()
     {
         // Arrange
         var user = new User
@@ -84,7 +84,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenDisplayNameIsTooLong()
+    public void GivenDisplayNameTooLong_WhenValidating_ThenReturnsDisplayNameTooLongError()
     {
         // Arrange
         var user = new User
@@ -103,7 +103,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenPasswordHashIsEmpty()
+    public void GivenEmptyPasswordHash_WhenValidating_ThenReturnsPasswordHashRequiredError()
     {
         // Arrange
         var user = new User
@@ -122,7 +122,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenPublicKeyIsEmpty()
+    public void GivenEmptyPublicKey_WhenValidating_ThenReturnsPublicKeyRequiredError()
     {
         // Arrange
         var user = new User
@@ -141,7 +141,7 @@ public class UserValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnMultipleErrors_WhenMultipleFieldsAreInvalid()
+    public void GivenMultipleInvalidFields_WhenValidating_ThenReturnsMultipleErrors()
     {
         // Arrange
         var user = new User
@@ -161,5 +161,56 @@ public class UserValidationTests
         Assert.Contains("DisplayName is required", errors);
         Assert.Contains("PasswordHash is required", errors);
         Assert.Contains("PublicKey is required", errors);
+    }
+
+    [Fact]
+    public void GivenEmailWithSpaces_WhenValidating_ThenReturnsEmailFormatInvalidError()
+    {
+        // Arrange
+        var user = new User
+        {
+            Email = "test @example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Act
+        var errors = user.Validate();
+
+        // Assert
+        Assert.Contains("Email format is invalid", errors);
+    }
+
+    [Fact]
+    public void GivenDefaultUserRole_WhenCreated_ThenRoleIsUser()
+    {
+        // Arrange & Act
+        var user = new User
+        {
+            Email = "test@example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Assert
+        Assert.Equal("user", user.Role);
+    }
+
+    [Fact]
+    public void GivenDefaultIsActive_WhenCreated_ThenIsActiveIsTrue()
+    {
+        // Arrange & Act
+        var user = new User
+        {
+            Email = "test@example.com",
+            DisplayName = "Test User",
+            PasswordHash = "hashed_password_123",
+            PublicKey = "public_key_123"
+        };
+
+        // Assert
+        Assert.True(user.IsActive);
     }
 }

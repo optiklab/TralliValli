@@ -3,12 +3,12 @@ using TraliVali.Domain.Entities;
 namespace TraliVali.Tests.Entities;
 
 /// <summary>
-/// Tests for Message entity validation
+/// Tests for Message entity validation following Given-When-Then pattern
 /// </summary>
 public class MessageValidationTests
 {
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenMessageIsValid()
+    public void GivenValidMessage_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var message = new Message
@@ -27,7 +27,7 @@ public class MessageValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenEncryptedContentIsProvided()
+    public void GivenEncryptedContentProvided_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var message = new Message
@@ -46,7 +46,7 @@ public class MessageValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenConversationIdIsEmpty()
+    public void GivenEmptyConversationId_WhenValidating_ThenReturnsConversationIdRequiredError()
     {
         // Arrange
         var message = new Message
@@ -65,7 +65,7 @@ public class MessageValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenSenderIdIsEmpty()
+    public void GivenEmptySenderId_WhenValidating_ThenReturnsSenderIdRequiredError()
     {
         // Arrange
         var message = new Message
@@ -84,7 +84,7 @@ public class MessageValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenTypeIsEmpty()
+    public void GivenEmptyType_WhenValidating_ThenReturnsTypeRequiredError()
     {
         // Arrange
         var message = new Message
@@ -103,7 +103,7 @@ public class MessageValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenBothContentAndEncryptedContentAreEmpty()
+    public void GivenBothContentAndEncryptedContentEmpty_WhenValidating_ThenReturnsContentRequiredError()
     {
         // Arrange
         var message = new Message
@@ -120,5 +120,42 @@ public class MessageValidationTests
 
         // Assert
         Assert.Contains("Either Content or EncryptedContent is required", errors);
+    }
+
+    [Fact]
+    public void GivenDeletedMessage_WhenIsDeletedIsTrue_ThenIsDeletedPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var message = new Message
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            SenderId = "507f1f77bcf86cd799439012",
+            Type = "text",
+            Content = "Hello",
+            IsDeleted = true
+        };
+
+        // Assert
+        Assert.True(message.IsDeleted);
+    }
+
+    [Fact]
+    public void GivenMessageWithReplyTo_WhenReplyToSet_ThenReplyToPropertyIsCorrect()
+    {
+        // Arrange
+        var replyToId = "507f1f77bcf86cd799439033";
+
+        // Act
+        var message = new Message
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            SenderId = "507f1f77bcf86cd799439012",
+            Type = "text",
+            Content = "Hello",
+            ReplyTo = replyToId
+        };
+
+        // Assert
+        Assert.Equal(replyToId, message.ReplyTo);
     }
 }

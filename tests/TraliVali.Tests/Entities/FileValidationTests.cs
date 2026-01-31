@@ -3,12 +3,12 @@ using TraliVali.Domain.Entities;
 namespace TraliVali.Tests.Entities;
 
 /// <summary>
-/// Tests for File entity validation
+/// Tests for File entity validation following Given-When-Then pattern
 /// </summary>
 public class FileValidationTests
 {
     [Fact]
-    public void Validate_ShouldReturnNoErrors_WhenFileIsValid()
+    public void GivenValidFile_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -29,7 +29,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenConversationIdIsEmpty()
+    public void GivenEmptyConversationId_WhenValidating_ThenReturnsConversationIdRequiredError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -50,7 +50,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenUploaderIdIsEmpty()
+    public void GivenEmptyUploaderId_WhenValidating_ThenReturnsUploaderIdRequiredError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -71,7 +71,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenFileNameIsEmpty()
+    public void GivenEmptyFileName_WhenValidating_ThenReturnsFileNameRequiredError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -92,7 +92,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenMimeTypeIsEmpty()
+    public void GivenEmptyMimeType_WhenValidating_ThenReturnsMimeTypeRequiredError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -113,7 +113,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenSizeIsZero()
+    public void GivenZeroSize_WhenValidating_ThenReturnsSizeGreaterThanZeroError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -134,7 +134,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenSizeIsNegative()
+    public void GivenNegativeSize_WhenValidating_ThenReturnsSizeGreaterThanZeroError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -155,7 +155,7 @@ public class FileValidationTests
     }
 
     [Fact]
-    public void Validate_ShouldReturnError_WhenBlobPathIsEmpty()
+    public void GivenEmptyBlobPath_WhenValidating_ThenReturnsBlobPathRequiredError()
     {
         // Arrange
         var file = new TraliVali.Domain.Entities.File
@@ -173,5 +173,46 @@ public class FileValidationTests
 
         // Assert
         Assert.Contains("BlobPath is required", errors);
+    }
+
+    [Fact]
+    public void GivenDeletedFile_WhenIsDeletedIsTrue_ThenIsDeletedPropertyIsCorrect()
+    {
+        // Arrange & Act
+        var file = new TraliVali.Domain.Entities.File
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            UploaderId = "507f1f77bcf86cd799439012",
+            FileName = "test.txt",
+            MimeType = "text/plain",
+            Size = 1024,
+            BlobPath = "/storage/files/test.txt",
+            IsDeleted = true
+        };
+
+        // Assert
+        Assert.True(file.IsDeleted);
+    }
+
+    [Fact]
+    public void GivenFileWithThumbnail_WhenThumbnailPathSet_ThenThumbnailPathIsCorrect()
+    {
+        // Arrange
+        var thumbnailPath = "/storage/thumbnails/test_thumb.jpg";
+
+        // Act
+        var file = new TraliVali.Domain.Entities.File
+        {
+            ConversationId = "507f1f77bcf86cd799439011",
+            UploaderId = "507f1f77bcf86cd799439012",
+            FileName = "photo.jpg",
+            MimeType = "image/jpeg",
+            Size = 2048000,
+            BlobPath = "/storage/files/photo.jpg",
+            ThumbnailPath = thumbnailPath
+        };
+
+        // Assert
+        Assert.Equal(thumbnailPath, file.ThumbnailPath);
     }
 }
