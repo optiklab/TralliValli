@@ -23,6 +23,30 @@ TralliVali is a self-hosted, invite-only messaging platform with end-to-end encr
 
 **Content-Type**: `application/json`
 
+### Key Features
+
+- **28 REST Endpoints**: Complete API coverage for messaging, file sharing, and administration
+- **Authentication**: JWT-based authentication with magic links (passwordless)
+- **Interactive Documentation**: Swagger UI available at `/swagger`
+- **OpenAPI Specification**: Available at `/swagger/v1/swagger.json`
+
+### Quick Start
+
+1. Start the API:
+   ```bash
+   dotnet run --project src/TraliVali.Api/TraliVali.Api.csproj
+   ```
+
+2. Access Swagger UI:
+   ```
+   http://localhost:5000/swagger
+   ```
+
+3. Export OpenAPI Spec:
+   ```bash
+   ./scripts/export-openapi-spec.sh
+   ```
+
 ## Authentication
 
 TralliVali uses JWT (JSON Web Token) based authentication with RSA256 signing algorithm.
