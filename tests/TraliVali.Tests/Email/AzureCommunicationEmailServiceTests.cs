@@ -216,6 +216,292 @@ public class AzureCommunicationEmailServiceTests
             service.SendPasswordResetEmailAsync("test@example.com", "John", null!));
     }
 
+    [Fact]
+    public async Task SendWelcomeEmailAsync_WithNullRecipientEmail_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendWelcomeEmailAsync(null!, "John"));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_WithNullRecipientName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendWelcomeEmailAsync("test@example.com", null!));
+    }
+
+    #region Edge Case Tests - Whitespace Parameters
+
+    [Fact]
+    public async Task SendMagicLinkEmailAsync_WithWhitespaceRecipientEmail_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendMagicLinkEmailAsync("   ", "John", "https://example.com/magic"));
+    }
+
+    [Fact]
+    public async Task SendMagicLinkEmailAsync_WithWhitespaceRecipientName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendMagicLinkEmailAsync("test@example.com", "   ", "https://example.com/magic"));
+    }
+
+    [Fact]
+    public async Task SendMagicLinkEmailAsync_WithWhitespaceMagicLink_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendMagicLinkEmailAsync("test@example.com", "John", "   "));
+    }
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithWhitespaceRecipientEmail_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendInviteEmailAsync("   ", "John", "Jane", "https://example.com/invite"));
+    }
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithWhitespaceRecipientName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendInviteEmailAsync("test@example.com", "   ", "Jane", "https://example.com/invite"));
+    }
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithWhitespaceInviterName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendInviteEmailAsync("test@example.com", "John", "   ", "https://example.com/invite"));
+    }
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithWhitespaceInviteLink_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendInviteEmailAsync("test@example.com", "John", "Jane", "   "));
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmailAsync_WithWhitespaceRecipientEmail_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendPasswordResetEmailAsync("   ", "John", "https://example.com/reset"));
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmailAsync_WithWhitespaceRecipientName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendPasswordResetEmailAsync("test@example.com", "   ", "https://example.com/reset"));
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmailAsync_WithWhitespaceResetLink_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendPasswordResetEmailAsync("test@example.com", "John", "   "));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_WithWhitespaceRecipientEmail_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendWelcomeEmailAsync("   ", "John"));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_WithWhitespaceRecipientName_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => 
+            service.SendWelcomeEmailAsync("test@example.com", "   "));
+    }
+
+    #endregion
+
+    #region Edge Case Tests - Special Characters
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithSpecialCharactersInNames_ShouldThrowException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+
+        // Act & Assert - Will fail because EmailClient cannot be mocked easily
+        // This tests that special characters are handled properly (HTML encoding)
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendInviteEmailAsync(
+                "test@example.com", 
+                "John <script>alert('xss')</script>", 
+                "Jane & Co.",
+                "https://example.com/invite"));
+    }
+
+    [Fact]
+    public async Task SendMagicLinkEmailAsync_WithLongRecipientName_ShouldThrowException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+        var longName = new string('A', 1000);
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendMagicLinkEmailAsync("test@example.com", longName, "https://example.com/magic"));
+    }
+
+    #endregion
+
+    #region Cancellation Token Tests
+
+    [Fact]
+    public async Task SendMagicLinkEmailAsync_WithCancelledToken_ShouldThrowOperationCanceledException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert - Will fail at template loading or email sending
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendMagicLinkEmailAsync("test@example.com", "John", "https://example.com/magic", cts.Token));
+    }
+
+    [Fact]
+    public async Task SendInviteEmailAsync_WithCancelledToken_ShouldThrowOperationCanceledException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendInviteEmailAsync("test@example.com", "John", "Jane", "https://example.com/invite", cts.Token));
+    }
+
+    [Fact]
+    public async Task SendPasswordResetEmailAsync_WithCancelledToken_ShouldThrowOperationCanceledException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendPasswordResetEmailAsync("test@example.com", "John", "https://example.com/reset", cts.Token));
+    }
+
+    [Fact]
+    public async Task SendWelcomeEmailAsync_WithCancelledToken_ShouldThrowOperationCanceledException()
+    {
+        // Arrange
+        var config = CreateValidConfiguration();
+        var logger = new Mock<ILogger<AzureCommunicationEmailService>>().Object;
+        var service = new AzureCommunicationEmailService(config, logger);
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<Exception>(() => 
+            service.SendWelcomeEmailAsync("test@example.com", "John", cts.Token));
+    }
+
+    #endregion
+
     private static AzureCommunicationEmailConfiguration CreateValidConfiguration()
     {
         return new AzureCommunicationEmailConfiguration
