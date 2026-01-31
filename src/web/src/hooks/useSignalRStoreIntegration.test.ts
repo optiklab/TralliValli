@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useSignalRStoreIntegration } from './useSignalRStoreIntegration';
-import { SignalRService } from '@services/signalr';
 import { useConversationStore } from '@stores/useConversationStore';
 import { usePresenceStore } from '@stores/usePresenceStore';
+import { useSignalRStoreIntegration } from './useSignalRStoreIntegration';
 
 // Mock the stores
 vi.mock('@stores/useConversationStore', () => ({
@@ -19,13 +18,17 @@ vi.mock('@services/signalr', () => ({
   SignalRService: vi.fn(),
 }));
 
+interface MockSignalRService {
+  on: ReturnType<typeof vi.fn>;
+}
+
 describe('useSignalRStoreIntegration', () => {
-  let mockSignalRService: any;
-  let mockAddMessage: any;
-  let mockMarkMessageAsRead: any;
-  let mockUpdatePresence: any;
-  let mockSetUserOnline: any;
-  let mockSetUserOffline: any;
+  let mockSignalRService: MockSignalRService;
+  let mockAddMessage: ReturnType<typeof vi.fn>;
+  let mockMarkMessageAsRead: ReturnType<typeof vi.fn>;
+  let mockUpdatePresence: ReturnType<typeof vi.fn>;
+  let mockSetUserOnline: ReturnType<typeof vi.fn>;
+  let mockSetUserOffline: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +46,7 @@ describe('useSignalRStoreIntegration', () => {
     mockSetUserOffline = vi.fn();
 
     // Mock store implementations
-    vi.mocked(useConversationStore).mockImplementation((selector: any) => {
+    vi.mocked(useConversationStore).mockImplementation((selector) => {
       const state = {
         addMessage: mockAddMessage,
         markMessageAsRead: mockMarkMessageAsRead,
@@ -51,7 +54,7 @@ describe('useSignalRStoreIntegration', () => {
       return selector(state);
     });
 
-    vi.mocked(usePresenceStore).mockImplementation((selector: any) => {
+    vi.mocked(usePresenceStore).mockImplementation((selector) => {
       const state = {
         updatePresence: mockUpdatePresence,
         setUserOnline: mockSetUserOnline,
@@ -127,7 +130,14 @@ describe('useSignalRStoreIntegration', () => {
       const content = 'Hello, world!';
       const timestamp = new Date('2026-01-01T10:00:00Z');
 
-      handlers.onReceiveMessage(conversationId, messageId, senderId, senderName, content, timestamp);
+      handlers.onReceiveMessage(
+        conversationId,
+        messageId,
+        senderId,
+        senderName,
+        content,
+        timestamp
+      );
 
       expect(mockAddMessage).toHaveBeenCalledWith(conversationId, {
         id: messageId,

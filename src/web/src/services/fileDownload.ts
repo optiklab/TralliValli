@@ -9,8 +9,8 @@
  */
 
 import { apiClient } from './api';
-import type { FileMetadata } from '@/types/api';
 import { FileEncryptionService, type EncryptedFileMetadata } from './fileEncryption';
+import type { FileMetadata } from '@/types/api';
 
 // ============================================================================
 // Types

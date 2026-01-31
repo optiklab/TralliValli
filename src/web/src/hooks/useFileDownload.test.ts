@@ -43,9 +43,7 @@ describe('useFileDownload', () => {
 
   describe('state management', () => {
     it('should set isDownloading to true during download', async () => {
-      mockDownloadFile.mockImplementation(
-        () => new Promise((resolve) => setTimeout(resolve, 100))
-      );
+      mockDownloadFile.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
 
       const { useFileDownload } = await import('./useFileDownload');
       const { result } = renderHook(() => useFileDownload());

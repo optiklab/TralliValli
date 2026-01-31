@@ -100,7 +100,9 @@ async function decryptSmallFile(
   const encrypted: EncryptedData = {
     iv: metadata.iv,
     ciphertext: btoa(
-      String.fromCharCode(...encryptedData.slice(IV_LENGTH_BYTES, encryptedData.length - TAG_LENGTH_BYTES))
+      String.fromCharCode(
+        ...encryptedData.slice(IV_LENGTH_BYTES, encryptedData.length - TAG_LENGTH_BYTES)
+      )
     ),
     tag: metadata.tag,
   };
