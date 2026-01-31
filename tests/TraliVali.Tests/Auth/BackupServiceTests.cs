@@ -71,7 +71,7 @@ public class BackupServiceTests : IAsyncLifetime
         // Add some test data to backup
         var user = new User
         {
-            Id = "test-user-1",
+            Id = ObjectId.GenerateNewId().ToString(),
             Email = "test@example.com",
             DisplayName = "Test User",
             PasswordHash = "hash",
@@ -252,7 +252,7 @@ public class BackupServiceTests : IAsyncLifetime
         // Arrange - First create a backup
         var testUser = new User
         {
-            Id = "backup-test-user",
+            Id = ObjectId.GenerateNewId().ToString(),
             Email = "backup@example.com",
             DisplayName = "Backup Test User",
             PasswordHash = "hash",
@@ -370,7 +370,7 @@ public class BackupServiceTests : IAsyncLifetime
         // Arrange - Add data to multiple collections
         var user = new User
         {
-            Id = "multi-test-user",
+            Id = ObjectId.GenerateNewId().ToString(),
             Email = "multi@example.com",
             DisplayName = "Multi Test User",
             PasswordHash = "hash",
@@ -380,7 +380,7 @@ public class BackupServiceTests : IAsyncLifetime
 
         var conversation = new Conversation
         {
-            Id = "test-conversation",
+            Id = ObjectId.GenerateNewId().ToString(),
             Type = "direct",
             Participants = new List<Participant>
             {
@@ -405,7 +405,7 @@ public class BackupServiceTests : IAsyncLifetime
         // Arrange - Create test data with specific values
         var originalUser = new User
         {
-            Id = "integrity-test-user",
+            Id = ObjectId.GenerateNewId().ToString(),
             Email = "integrity@example.com",
             DisplayName = "Integrity Test User",
             PasswordHash = "secure-hash-123",
