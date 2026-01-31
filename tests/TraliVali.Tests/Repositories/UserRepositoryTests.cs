@@ -1,5 +1,6 @@
 using TraliVali.Domain.Entities;
 using TraliVali.Infrastructure.Repositories;
+using TraliVali.Tests.Data.Factories;
 using TraliVali.Tests.Infrastructure;
 
 namespace TraliVali.Tests.Repositories;
@@ -23,12 +24,10 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User",
-            IsActive = true
-        };
+        var user = UserFactory.Create()
+            .WithEmail("test@example.com")
+            .WithDisplayName("Test User")
+            .Build();
 
         // Act
         var result = await _repository.AddAsync(user);
@@ -45,11 +44,10 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user = new User
-        {
-            Email = "test@example.com",
-            DisplayName = "Test User"
-        };
+        var user = UserFactory.Create()
+            .WithEmail("test@example.com")
+            .WithDisplayName("Test User")
+            .Build();
         var addedUser = await _repository.AddAsync(user);
 
         // Act
@@ -80,8 +78,8 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user1 = new User { Email = "user1@example.com", DisplayName = "User 1" };
-        var user2 = new User { Email = "user2@example.com", DisplayName = "User 2" };
+        var user1 = UserFactory.Create().WithEmail("user1@example.com").WithDisplayName("User 1").Build();
+        var user2 = UserFactory.Create().WithEmail("user2@example.com").WithDisplayName("User 2").Build();
         await _repository.AddAsync(user1);
         await _repository.AddAsync(user2);
 
@@ -98,9 +96,9 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user1 = new User { Email = "test1@example.com", DisplayName = "Test User 1", IsActive = true };
-        var user2 = new User { Email = "test2@example.com", DisplayName = "Test User 2", IsActive = false };
-        var user3 = new User { Email = "test3@example.com", DisplayName = "Test User 3", IsActive = true };
+        var user1 = UserFactory.Create().WithEmail("test1@example.com").AsActive().Build();
+        var user2 = UserFactory.Create().WithEmail("test2@example.com").AsInactive().Build();
+        var user3 = UserFactory.Create().WithEmail("test3@example.com").AsActive().Build();
         await _repository.AddAsync(user1);
         await _repository.AddAsync(user2);
         await _repository.AddAsync(user3);
@@ -119,7 +117,10 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user = new User { Email = "test@example.com", DisplayName = "Old Name" };
+        var user = UserFactory.Create()
+            .WithEmail("test@example.com")
+            .WithDisplayName("Old Name")
+            .Build();
         var addedUser = await _repository.AddAsync(user);
 
         addedUser.DisplayName = "New Name";
@@ -140,12 +141,11 @@ public class UserRepositoryTests : IClassFixture<MongoDbFixture>
     {
         // Arrange
         await _fixture.CleanupAsync();
-        var user = new User
-        {
-            Id = "507f1f77bcf86cd799439011",
-            Email = "test@example.com",
-            DisplayName = "Test"
-        };
+        var user = UserFactory.Create()
+            .WithId("507f1f77bcf86cd799439011")
+            .WithEmail("test@example.com")
+            .WithDisplayName("Test")
+            .Build();
 
         // Act
         var result = await _repository.UpdateAsync(user.Id, user);

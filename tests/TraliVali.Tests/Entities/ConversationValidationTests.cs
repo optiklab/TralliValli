@@ -1,4 +1,6 @@
+using MongoDB.Bson;
 using TraliVali.Domain.Entities;
+using TraliVali.Tests.Data.Factories;
 
 namespace TraliVali.Tests.Entities;
 
@@ -11,15 +13,7 @@ public class ConversationValidationTests
     public void GivenValidConversation_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
-        var conversation = new Conversation
-        {
-            Type = "direct",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" }
-            },
-            RecentMessages = new List<string> { "msg1", "msg2" }
-        };
+        var conversation = ConversationFactory.BuildValid();
 
         // Act
         var errors = conversation.Validate();
@@ -32,14 +26,10 @@ public class ConversationValidationTests
     public void GivenEmptyType_WhenValidating_ThenReturnsTypeRequiredError()
     {
         // Arrange
-        var conversation = new Conversation
-        {
-            Type = "",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" }
-            }
-        };
+        var conversation = ConversationFactory.Create()
+            .WithType("")
+            .WithParticipant(ObjectId.GenerateNewId().ToString())
+            .Build();
 
         // Act
         var errors = conversation.Validate();
@@ -52,11 +42,7 @@ public class ConversationValidationTests
     public void GivenEmptyParticipants_WhenValidating_ThenReturnsParticipantsRequiredError()
     {
         // Arrange
-        var conversation = new Conversation
-        {
-            Type = "direct",
-            Participants = new List<Participant>()
-        };
+        var conversation = ConversationFactory.BuildInvalid();
 
         // Act
         var errors = conversation.Validate();
@@ -69,15 +55,11 @@ public class ConversationValidationTests
     public void GivenRecentMessagesExceeds50_WhenValidating_ThenReturnsRecentMessagesTooManyError()
     {
         // Arrange
-        var conversation = new Conversation
-        {
-            Type = "direct",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" }
-            },
-            RecentMessages = Enumerable.Range(1, 51).Select(i => $"msg{i}").ToList()
-        };
+        var recentMessages = Enumerable.Range(1, 51).Select(i => $"msg{i}").ToList();
+        var conversation = ConversationFactory.Create()
+            .WithParticipant(ObjectId.GenerateNewId().ToString())
+            .WithRecentMessages(recentMessages)
+            .Build();
 
         // Act
         var errors = conversation.Validate();
@@ -90,15 +72,11 @@ public class ConversationValidationTests
     public void GivenRecentMessagesExactly50_WhenValidating_ThenReturnsNoErrors()
     {
         // Arrange
-        var conversation = new Conversation
-        {
-            Type = "direct",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" }
-            },
-            RecentMessages = Enumerable.Range(1, 50).Select(i => $"msg{i}").ToList()
-        };
+        var recentMessages = Enumerable.Range(1, 50).Select(i => $"msg{i}").ToList();
+        var conversation = ConversationFactory.Create()
+            .WithParticipant(ObjectId.GenerateNewId().ToString())
+            .WithRecentMessages(recentMessages)
+            .Build();
 
         // Act
         var errors = conversation.Validate();
@@ -111,17 +89,14 @@ public class ConversationValidationTests
     public void GivenGroupConversation_WhenIsGroupIsTrue_ThenIsGroupPropertyIsCorrect()
     {
         // Arrange & Act
-        var conversation = new Conversation
-        {
-            Type = "group",
-            Name = "My Group",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" },
-                new Participant { UserId = "507f1f77bcf86cd799439022" }
-            },
-            IsGroup = true
-        };
+        var userId1 = ObjectId.GenerateNewId().ToString();
+        var userId2 = ObjectId.GenerateNewId().ToString();
+        var conversation = ConversationFactory.Create()
+            .AsGroup()
+            .WithName("My Group")
+            .WithParticipant(userId1)
+            .WithParticipant(userId2)
+            .Build();
 
         // Assert
         Assert.True(conversation.IsGroup);
@@ -132,15 +107,10 @@ public class ConversationValidationTests
     public void GivenDirectConversation_WhenIsGroupIsFalse_ThenIsGroupPropertyIsCorrect()
     {
         // Arrange & Act
-        var conversation = new Conversation
-        {
-            Type = "direct",
-            Participants = new List<Participant>
-            {
-                new Participant { UserId = "507f1f77bcf86cd799439011" }
-            },
-            IsGroup = false
-        };
+        var conversation = ConversationFactory.Create()
+            .AsDirect()
+            .WithParticipant(ObjectId.GenerateNewId().ToString())
+            .Build();
 
         // Assert
         Assert.False(conversation.IsGroup);
