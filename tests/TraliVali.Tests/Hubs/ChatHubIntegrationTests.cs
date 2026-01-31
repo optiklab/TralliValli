@@ -55,6 +55,13 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 [Collection("Sequential")]
 public class ChatHubIntegrationTests : IAsyncLifetime
 {
+    /// <summary>
+    /// Delay in milliseconds to allow SignalR group membership to propagate across connections.
+    /// This is necessary because group operations (AddToGroupAsync) are asynchronous and 
+    /// may not be immediately visible to other connections in the distributed scenario.
+    /// </summary>
+    private const int SignalRGroupPropagationDelayMs = 100;
+    
     private WebApplicationFactory<Program>? _factory;
     private MongoDbContainer? _mongoContainer;
     private RedisContainer? _redisContainer;
@@ -219,7 +226,7 @@ public class ChatHubIntegrationTests : IAsyncLifetime
         await client2.InvokeAsync("JoinConversation", conversationId);
         
         // Wait for group membership to be fully propagated in SignalR
-        await Task.Delay(100);
+        await Task.Delay(SignalRGroupPropagationDelayMs);
 
         // Act - Client 1 sends a message
         await client1.InvokeAsync("SendMessage", conversationId, messageId, content);
