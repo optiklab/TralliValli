@@ -47,6 +47,35 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Gets the system status to determine if bootstrap registration is allowed
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>System status indicating if system is bootstrapped</returns>
+    [HttpGet("system-status")]
+    [ProducesResponseType(typeof(SystemStatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetSystemStatus(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check if any users exist in the system
+            var users = await _userRepository.FindAsync(_ => true, cancellationToken);
+            var isBootstrapped = users.Any();
+
+            return Ok(new SystemStatusResponse
+            {
+                IsBootstrapped = isBootstrapped,
+                RequiresInvite = isBootstrapped
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting system status");
+            return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while processing your request.");
+        }
+    }
+
+    /// <summary>
     /// Requests a magic link to be sent to the specified email
     /// </summary>
     /// <param name="request">The magic link request</param>
@@ -339,7 +368,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Registers a new user with an invite token
+    /// Registers a new user with an invite token (or without one if system is not bootstrapped)
     /// </summary>
     /// <param name="request">The registration request</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -359,12 +388,29 @@ public class AuthController : ControllerBase
                 return BadRequest(ModelState);
             }
 
-            // 1. Validate invite
-            var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
-            if (validationResult == null)
+            // Check if system is bootstrapped (has any users)
+            var existingUsers = await _userRepository.FindAsync(_ => true, cancellationToken);
+            var isBootstrapped = existingUsers.Any();
+
+            // Validate invite token only if system is bootstrapped
+            if (isBootstrapped)
             {
-                _logger.LogWarning("Registration attempted with invalid invite token");
-                return BadRequest(new { message = "Invalid or expired invite token." });
+                if (string.IsNullOrWhiteSpace(request.InviteToken))
+                {
+                    _logger.LogWarning("Registration attempted without invite token on bootstrapped system");
+                    return BadRequest(new { message = "Invite token is required." });
+                }
+
+                var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
+                if (validationResult == null)
+                {
+                    _logger.LogWarning("Registration attempted with invalid invite token");
+                    return BadRequest(new { message = "Invalid or expired invite token." });
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Bootstrap registration - first user being created");
             }
 
             // Normalize email for consistency
@@ -378,48 +424,68 @@ public class AuthController : ControllerBase
             }
 
             // Check if user already exists (using normalized email)
-            var existingUsers = await _userRepository.FindAsync(u => u.Email == normalizedEmail, cancellationToken);
-            if (existingUsers.Any())
+            var existingUserCheck = await _userRepository.FindAsync(u => u.Email == normalizedEmail, cancellationToken);
+            if (existingUserCheck.Any())
             {
                 _logger.LogWarning("Registration attempted with existing email: {Email}", normalizedEmail);
                 return BadRequest(new { message = "User with this email already exists." });
             }
 
-            // 2. Create user with placeholder values for passwordless auth
+            // Determine inviter ID and role
+            string? inviterId = null;
+            string userRole = "user";
+
+            if (isBootstrapped && !string.IsNullOrWhiteSpace(request.InviteToken))
+            {
+                var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
+                inviterId = validationResult?.InviterId;
+            }
+            else
+            {
+                // First user gets admin role
+                userRole = "admin";
+                _logger.LogInformation("Assigning admin role to first user");
+            }
+
+            // Create user with placeholder values for passwordless auth
             var user = new User
             {
                 Email = normalizedEmail,
                 DisplayName = trimmedDisplayName,
                 PasswordHash = "N/A", // Passwordless auth using magic links
                 PublicKey = "TBD", // Will be set by client during first login
-                InvitedBy = validationResult.InviterId,
+                InvitedBy = inviterId,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                Role = userRole
             };
 
             var createdUser = await _userRepository.AddAsync(user, cancellationToken);
-            _logger.LogInformation("User created successfully: {Email}", createdUser.Email);
+            _logger.LogInformation("User created successfully: {Email} with role: {Role}", createdUser.Email, createdUser.Role);
 
-            // 3. Mark invite as used (critical: do this immediately after user creation)
-            var inviteRedeemed = await _inviteService.RedeemInviteAsync(request.InviteToken, createdUser.Id);
-            if (!inviteRedeemed)
+            // Mark invite as used only if system was bootstrapped and invite was provided
+            if (isBootstrapped && !string.IsNullOrWhiteSpace(request.InviteToken))
             {
-                // Invite redemption failed - this is a critical error
-                // The user was created but invite is still valid, creating inconsistent state
-                // We should delete the user to maintain consistency
-                _logger.LogError("Failed to redeem invite after user creation, rolling back user creation");
-                try
+                var inviteRedeemed = await _inviteService.RedeemInviteAsync(request.InviteToken, createdUser.Id);
+                if (!inviteRedeemed)
                 {
-                    await _userRepository.DeleteAsync(createdUser.Id, cancellationToken);
+                    // Invite redemption failed - this is a critical error
+                    // The user was created but invite is still valid, creating inconsistent state
+                    // We should delete the user to maintain consistency
+                    _logger.LogError("Failed to redeem invite after user creation, rolling back user creation");
+                    try
+                    {
+                        await _userRepository.DeleteAsync(createdUser.Id, cancellationToken);
+                    }
+                    catch (Exception deleteEx)
+                    {
+                        _logger.LogError(deleteEx, "Failed to rollback user creation after invite redemption failure");
+                    }
+                    return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred during registration. Please try again.");
                 }
-                catch (Exception deleteEx)
-                {
-                    _logger.LogError(deleteEx, "Failed to rollback user creation after invite redemption failure");
-                }
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred during registration. Please try again.");
             }
 
-            // 4. Send welcome email (best effort - don't fail if email fails)
+            // Send welcome email (best effort - don't fail if email fails)
             try
             {
                 await _emailService.SendWelcomeEmailAsync(
@@ -434,7 +500,7 @@ public class AuthController : ControllerBase
                 // Continue anyway - this is not critical
             }
 
-            // 5. Return JWT
+            // Generate JWT tokens
             var tokenResult = _jwtService.GenerateToken(createdUser, "registration");
 
             _logger.LogInformation("User registered successfully: {Email}", createdUser.Email);

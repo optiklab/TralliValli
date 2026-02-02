@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import QRCode from 'qrcode';
+import { api } from '@services/index';
 
 export interface InviteModalProps {
   onClose?: () => void;
@@ -16,46 +16,55 @@ export interface InviteModalProps {
 export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
   const [expiryHours, setExpiryHours] = useState(24);
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Generate invite link
-  const generateInviteLink = () => {
+  // Generate invite link via API
+  const generateInviteLink = async () => {
     setIsGenerating(true);
+    setError(null);
 
-    // Generate a random invite token
-    const token = crypto.randomUUID();
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/invite/${token}`;
-
-    setInviteLink(link);
-    onGenerate?.(expiryHours);
-    setIsGenerating(false);
+    try {
+      const response = await api.generateInvite({ expiryHours });
+      
+      setInviteCode(response.inviteCode);
+      setInviteLink(response.inviteLink);
+      setQrCodeDataUrl(response.qrCodeDataUrl);
+      setExpiresAt(new Date(response.expiresAt));
+      
+      onGenerate?.(expiryHours);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to generate invite link';
+      setError(errorMsg);
+      console.error('Failed to generate invite:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  // Generate QR code when invite link changes
+  // Render QR code to canvas when QR code data URL changes
   useEffect(() => {
-    if (inviteLink && canvasRef.current) {
-      QRCode.toCanvas(
-        canvasRef.current,
-        inviteLink,
-        {
-          width: 256,
-          margin: 2,
-          color: {
-            dark: '#000000',
-            light: '#ffffff',
-          },
-        },
-        (error) => {
-          if (error) {
-            console.error('QR code generation error:', error);
+    if (qrCodeDataUrl && canvasRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
           }
         }
-      );
+      };
+      img.src = qrCodeDataUrl;
     }
-  }, [inviteLink]);
+  }, [qrCodeDataUrl]);
 
   // Copy invite link to clipboard
   const copyToClipboard = async () => {
@@ -65,7 +74,23 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+      setError('Failed to copy to clipboard');
     }
+  };
+
+  // Format expiry time remaining
+  const formatTimeRemaining = () => {
+    if (!expiresAt) return '';
+    
+    const now = new Date();
+    const diffMs = expiresAt.getTime() - now.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (diffHours > 0) {
+      return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
+    }
+    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`;
   };
 
   return (
@@ -117,6 +142,17 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
           </select>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-4">
+            <div className="flex">
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">{error}</h3>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Generate Button */}
         {!inviteLink && (
           <button
@@ -134,7 +170,7 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
             {/* QR Code */}
             <div className="flex justify-center">
               <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
-                <canvas ref={canvasRef} style={{ display: 'block' }} />
+                <canvas ref={canvasRef} style={{ display: 'block', maxWidth: '256px' }} />
               </div>
             </div>
 
@@ -164,7 +200,7 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
             <div className="text-sm text-gray-600">
               This link will expire in{' '}
               <span className="font-medium">
-                {expiryHours} hour{expiryHours !== 1 ? 's' : ''}
+                {formatTimeRemaining() || `${expiryHours} hour${expiryHours !== 1 ? 's' : ''}`}
               </span>
             </div>
 
@@ -172,7 +208,11 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
             <button
               onClick={() => {
                 setInviteLink('');
+                setInviteCode('');
+                setQrCodeDataUrl('');
+                setExpiresAt(null);
                 setCopied(false);
+                setError(null);
               }}
               className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >

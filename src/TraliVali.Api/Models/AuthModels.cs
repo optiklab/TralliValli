@@ -137,10 +137,9 @@ public class LogoutResponse
 public class RegisterRequest
 {
     /// <summary>
-    /// Gets or sets the invite token
+    /// Gets or sets the invite token (optional when system is not bootstrapped)
     /// </summary>
-    [Required]
-    public string InviteToken { get; set; } = string.Empty;
+    public string? InviteToken { get; set; }
 
     /// <summary>
     /// Gets or sets the email address
@@ -202,4 +201,20 @@ public class ValidateInviteResponse
     /// Gets or sets a message describing the validation result
     /// </summary>
     public string? Message { get; set; }
+}
+
+/// <summary>
+/// Response model for system status
+/// </summary>
+public class SystemStatusResponse
+{
+    /// <summary>
+    /// Gets or sets whether the system has been bootstrapped (has at least one user)
+    /// </summary>
+    public bool IsBootstrapped { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether registration requires an invite
+    /// </summary>
+    public bool RequiresInvite { get; set; }
 }
