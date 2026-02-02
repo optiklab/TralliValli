@@ -16,3 +16,27 @@ docs
 │   └── E2E [docs/WEB_MODULE_E2E.md](docs/WEB_MODULE_E2E.md).
 └── Deployment at [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 ```
+
+## Run
+
+### Copy environment file
+Copy-Item .env.example .env
+
+### Start MongoDB, RabbitMQ, and Redis
+docker-compose up -d
+
+docker-compose ps
+
+cd src/TraliVali.Api
+dotnet run
+
+cd src/web
+npm install
+npm run dev
+
+## Quick run
+
+From project root
+> Copy-Item .env.example .env -ErrorAction SilentlyContinue
+> docker-compose up -d
+> dotnet run --project src/TraliVali.Api
