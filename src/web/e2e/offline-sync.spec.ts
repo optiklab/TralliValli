@@ -131,7 +131,7 @@ test.describe('Offline Queue and Sync', () => {
     );
 
     // Check if offline indicator appears
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const hasIndicator = await offlineIndicator
       .first()
       .isVisible({ timeout: 5000 })

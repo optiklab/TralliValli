@@ -16,7 +16,6 @@ export interface InviteModalProps {
 export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
   const [expiryHours, setExpiryHours] = useState(24);
   const [inviteLink, setInviteLink] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [copied, setCopied] = useState(false);
@@ -31,12 +30,11 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
 
     try {
       const response = await api.generateInvite({ expiryHours });
-      
-      setInviteCode(response.inviteCode);
+
       setInviteLink(response.inviteLink);
       setQrCodeDataUrl(response.qrCodeDataUrl);
       setExpiresAt(new Date(response.expiresAt));
-      
+
       onGenerate?.(expiryHours);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to generate invite link';
@@ -81,12 +79,12 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
   // Format expiry time remaining
   const formatTimeRemaining = () => {
     if (!expiresAt) return '';
-    
+
     const now = new Date();
     const diffMs = expiresAt.getTime() - now.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (diffHours > 0) {
       return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
     }
@@ -208,7 +206,6 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
             <button
               onClick={() => {
                 setInviteLink('');
-                setInviteCode('');
                 setQrCodeDataUrl('');
                 setExpiresAt(null);
                 setCopied(false);

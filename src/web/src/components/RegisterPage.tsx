@@ -44,7 +44,7 @@ export function RegisterPage({
       try {
         const status = await api.getSystemStatus();
         setIsBootstrapped(status.isBootstrapped);
-        
+
         // If not bootstrapped and no invite token, skip invite validation
         if (!status.isBootstrapped && !inviteFromUrl && !initialInviteToken) {
           setInviteValid(true); // Not needed for bootstrap
@@ -286,7 +286,8 @@ export function RegisterPage({
               <div className="flex">
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-blue-800">
-                    You are creating the first administrator account. After registration, you'll be able to generate invite links for other users.
+                    You are creating the first administrator account. After registration, you'll be
+                    able to generate invite links for other users.
                   </h3>
                 </div>
               </div>
@@ -299,7 +300,11 @@ export function RegisterPage({
               disabled={isLoading || (isBootstrapped && !inviteValid)}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating account...' : isBootstrapped ? 'Create account' : 'Create Admin Account'}
+              {isLoading
+                ? 'Creating account...'
+                : isBootstrapped
+                  ? 'Create account'
+                  : 'Create Admin Account'}
             </button>
           </div>
         </form>

@@ -139,7 +139,6 @@ test.describe('Registration via Invite Link', () => {
 
     // Mock the invite validation API to return success
     await mockValidInvite(page);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     // Mock the registration API - track if it gets called
     let registrationAttempts = 0;
