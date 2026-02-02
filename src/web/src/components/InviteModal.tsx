@@ -82,6 +82,12 @@ export function InviteModal({ onClose, onGenerate }: InviteModalProps) {
 
     const now = new Date();
     const diffMs = expiresAt.getTime() - now.getTime();
+
+    // If expired, return "Expired"
+    if (diffMs <= 0) {
+      return 'Expired';
+    }
+
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 

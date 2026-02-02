@@ -393,6 +393,7 @@ public class AuthController : ControllerBase
             var isBootstrapped = existingUsers.Any();
 
             // Validate invite token only if system is bootstrapped
+            InviteValidationResult? validationResult = null;
             if (isBootstrapped)
             {
                 if (string.IsNullOrWhiteSpace(request.InviteToken))
@@ -401,7 +402,7 @@ public class AuthController : ControllerBase
                     return BadRequest(new { message = "Invite token is required." });
                 }
 
-                var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
+                validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
                 if (validationResult == null)
                 {
                     _logger.LogWarning("Registration attempted with invalid invite token");
@@ -432,18 +433,11 @@ public class AuthController : ControllerBase
             }
 
             // Determine inviter ID and role
-            string? inviterId = null;
-            string userRole = "user";
-
-            if (isBootstrapped && !string.IsNullOrWhiteSpace(request.InviteToken))
+            string? inviterId = validationResult?.InviterId;
+            string userRole = isBootstrapped ? "user" : "admin";
+            
+            if (!isBootstrapped)
             {
-                var validationResult = await _inviteService.ValidateInviteAsync(request.InviteToken);
-                inviterId = validationResult?.InviterId;
-            }
-            else
-            {
-                // First user gets admin role
-                userRole = "admin";
                 _logger.LogInformation("Assigning admin role to first user");
             }
 
