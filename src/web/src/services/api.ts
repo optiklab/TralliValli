@@ -25,6 +25,8 @@ import {
   type CreateDirectConversationRequest,
   type CreateGroupConversationRequest,
   type FileMetadata,
+  type GenerateInviteRequest,
+  type GenerateInviteResponse,
   type LogoutRequest,
   type LogoutResponse,
   type MessageResponse,
@@ -40,6 +42,7 @@ import {
   type RequestMagicLinkResponse,
   type SearchMessagesRequest,
   type SearchMessagesResponse,
+  type SystemStatusResponse,
   type UpdateGroupMetadataRequest,
   type ValidateInviteResponse,
   type VerifyMagicLinkRequest,
@@ -385,6 +388,29 @@ class ApiClient {
   async validateInvite(token: string): Promise<ValidateInviteResponse> {
     return this.request<ValidateInviteResponse>(`/auth/invite/${token}`, {
       method: 'GET',
+    });
+  }
+
+  /**
+   * Get system status (bootstrap state)
+   */
+  async getSystemStatus(): Promise<SystemStatusResponse> {
+    return this.request<SystemStatusResponse>('/auth/system-status', {
+      method: 'GET',
+    });
+  }
+
+  // ============================================================================
+  // Invites Methods
+  // ============================================================================
+
+  /**
+   * Generate a new invite link with QR code
+   */
+  async generateInvite(data: GenerateInviteRequest): Promise<GenerateInviteResponse> {
+    return this.request<GenerateInviteResponse>('/invites/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 

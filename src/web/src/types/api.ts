@@ -46,7 +46,7 @@ export interface LogoutResponse {
 }
 
 export interface RegisterRequest {
-  inviteToken: string;
+  inviteToken?: string; // Optional for bootstrap registration
   email: string;
   displayName: string;
 }
@@ -62,6 +62,22 @@ export interface ValidateInviteResponse {
   isValid: boolean;
   expiresAt?: string;
   message?: string;
+}
+
+export interface SystemStatusResponse {
+  isBootstrapped: boolean;
+  requiresInvite: boolean;
+}
+
+export interface GenerateInviteRequest {
+  expiryHours: number;
+}
+
+export interface GenerateInviteResponse {
+  inviteCode: string;
+  inviteLink: string;
+  qrCodeDataUrl: string;
+  expiresAt: string;
 }
 
 // ============================================================================

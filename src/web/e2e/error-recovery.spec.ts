@@ -216,7 +216,10 @@ test.describe('Error Handling and Recovery', () => {
 
       // Or check for error message
       const errorMsg = page.locator('text=/invalid.*email|enter.*valid.*email/i');
-      await errorMsg.first().isVisible().catch(() => false);
+      await errorMsg
+        .first()
+        .isVisible()
+        .catch(() => false);
 
       // Clear the field for next iteration
       await emailInput.clear();
@@ -268,7 +271,6 @@ test.describe('Error Handling and Recovery', () => {
 
   test('should handle token refresh on expiration', async ({ page }) => {
     let tokenRefreshAttempted = false;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
     await page.evaluate(() => {
       const timestamp = Date.now();
@@ -361,7 +363,7 @@ test.describe('Error Handling and Recovery', () => {
 
     // Restore connection
     await context.setOffline(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     await page.waitForTimeout(2000);
 
     // Message should disappear when back online
