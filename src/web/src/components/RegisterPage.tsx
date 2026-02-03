@@ -3,8 +3,7 @@
  *
  * Displays a registration form with optional invite link input, email, and display name.
  * Validates the invite token before allowing registration if provided.
- * If system is not bootstrapped, allows registration without an invite (admin setup).
- * If system is bootstrapped, invite link is optional for open registration.
+ * If system is not bootstrapped, allows admin setup. Otherwise, invite link is optional for open registration.
  */
 
 import { useState, type FormEvent, useEffect } from 'react';
