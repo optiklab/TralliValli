@@ -4,6 +4,7 @@ import { RegisterPage } from './components/RegisterPage';
 import { LoginPage } from './components/LoginPage';
 import { MagicLinkSent } from './components/MagicLinkSent';
 import { VerifyMagicLink } from './components/VerifyMagicLink';
+import { ChatLayout } from './components/ChatLayout';
 import { useAuthStore } from '@stores/useAuthStore';
 import { api } from '@services/index';
 import './App.css';
@@ -55,24 +56,11 @@ function AppContent() {
     );
   }
 
-  // If authenticated, show dashboard (placeholder for now)
+  // If authenticated, show chat interface
   if (isAuthenticated) {
     return (
       <Routes>
-        <Route path="/" element={
-          <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-            <div className="max-w-md w-full space-y-8 text-center">
-              <h1 className="text-3xl font-bold text-gray-900">Welcome to TralliVali!</h1>
-              <p className="text-gray-600">You are logged in.</p>
-              <button 
-                onClick={() => useAuthStore.getState().logout()}
-                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        } />
+        <Route path="/" element={<ChatLayout />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
