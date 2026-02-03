@@ -7,6 +7,24 @@ import { test, expect } from './fixtures';
  */
 
 /**
+ * Helper to mock system status (bootstrapped)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function mockSystemStatus(page: any, isBootstrapped = true) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await page.route('**/auth/system-status', async (route: any) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        isBootstrapped,
+        requiresInvite: isBootstrapped,
+      }),
+    });
+  });
+}
+
+/**
  * Helper to mock successful invite validation
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,7 +89,8 @@ test.describe('Registration via Invite Link', () => {
     // Generate a test invite token (in real scenario, this would come from admin API)
     const inviteToken = 'test-invite-token-' + Date.now();
 
-    // Mock the invite validation and registration APIs
+    // Mock system status and invite validation
+    await mockSystemStatus(page);
     await mockValidInvite(page);
     await mockSuccessfulRegistration(page);
 
@@ -117,7 +136,8 @@ test.describe('Registration via Invite Link', () => {
   test('should show error with invalid invite link', async ({ page, testUser }) => {
     const invalidToken = 'invalid-token-xyz';
 
-    // Mock the invite validation API to return failure
+    // Mock system status and invalid invite
+    await mockSystemStatus(page);
     await mockInvalidInvite(page);
 
     // Navigate to registration page with invalid token
@@ -137,7 +157,8 @@ test.describe('Registration via Invite Link', () => {
   test('should validate email format during registration', async ({ page, testUser }) => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
-    // Mock the invite validation API to return success
+    // Mock system status and invite validation
+    await mockSystemStatus(page);
     await mockValidInvite(page);
 
     // Mock the registration API - track if it gets called
@@ -189,7 +210,8 @@ test.describe('Registration via Invite Link', () => {
   test('should require display name during registration', async ({ page, testUser }) => {
     const inviteToken = 'test-invite-token-' + Date.now();
 
-    // Mock the invite validation API to return success
+    // Mock system status and invite validation
+    await mockSystemStatus(page);
     await mockValidInvite(page);
 
     await page.goto(`/register?invite=${inviteToken}`);
@@ -208,5 +230,41 @@ test.describe('Registration via Invite Link', () => {
     // Should show validation error for display name
     const errorMessage = page.locator('text=/name.*required|display name/i');
     await expect(errorMessage).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should allow registration without invite link', async ({ page, testUser }) => {
+    // Mock system status and registration
+    await mockSystemStatus(page);
+    await mockSuccessfulRegistration(page);
+
+    // Navigate to registration page without invite token
+    await page.goto('/register');
+
+    // Wait for system status check to complete
+    const emailInput = page.locator('input[name="email"], input[type="email"]');
+    await emailInput.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Verify invite field is optional (has "(optional)" text)
+    const inviteLabel = page.locator('text=/invite.*optional/i');
+    await expect(inviteLabel).toBeVisible();
+
+    // Fill in email and display name (no invite token)
+    await page.fill('input[name="email"], input[type="email"]', testUser.email);
+    await page.fill(
+      'input[name="displayName"], input[placeholder*="name" i]',
+      testUser.displayName
+    );
+
+    // Submit registration form
+    const submitButton = page.locator('button[type="submit"]');
+    await submitButton.click();
+
+    // Wait for registration request to complete
+    await page.waitForResponse('**/auth/register', { timeout: 5000 });
+
+    // Verify no error message is shown
+    const errorElement = page.locator('text=/error|failed/i').first();
+    const hasError = await errorElement.isVisible().catch(() => false);
+    expect(hasError).toBe(false);
   });
 });

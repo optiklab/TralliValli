@@ -14,6 +14,7 @@ vi.mock('@services', () => ({
   api: {
     register: vi.fn(),
     validateInvite: vi.fn(),
+    getSystemStatus: vi.fn(),
   },
 }));
 
@@ -33,22 +34,35 @@ describe('RegisterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(authStore.useAuthStore).mockReturnValue(mockLogin);
+    // Mock system status to return bootstrapped by default
+    vi.mocked(services.api.getSystemStatus).mockResolvedValue({
+      isBootstrapped: true,
+      requiresInvite: true,
+    });
   });
 
-  it('renders the registration form', () => {
+  it('renders the registration form', async () => {
     renderWithRouter(<RegisterPage />);
 
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
     expect(screen.getByText('Create your account')).toBeInTheDocument();
-    expect(screen.getByLabelText('Invite Link')).toBeInTheDocument();
+    expect(screen.getByText(/Invite Link/)).toBeInTheDocument();
     expect(screen.getByLabelText('Email address')).toBeInTheDocument();
     expect(screen.getByLabelText('Display Name')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 
-  it('updates input fields when user types', () => {
+  it('updates input fields when user types', async () => {
     renderWithRouter(<RegisterPage />);
 
-    const inviteInput = screen.getByLabelText('Invite Link') as HTMLInputElement;
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const inviteInput = screen.getByPlaceholderText(/invite link or token/i) as HTMLInputElement;
     const emailInput = screen.getByLabelText('Email address') as HTMLInputElement;
     const displayNameInput = screen.getByLabelText('Display Name') as HTMLInputElement;
 
@@ -68,7 +82,11 @@ describe('RegisterPage', () => {
 
     renderWithRouter(<RegisterPage />);
 
-    const inviteInput = screen.getByLabelText('Invite Link');
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const inviteInput = screen.getByPlaceholderText(/invite link or token/i);
     fireEvent.change(inviteInput, { target: { value: 'valid-token' } });
 
     await waitFor(
@@ -87,7 +105,11 @@ describe('RegisterPage', () => {
 
     renderWithRouter(<RegisterPage />);
 
-    const inviteInput = screen.getByLabelText('Invite Link');
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const inviteInput = screen.getByPlaceholderText(/invite link or token/i);
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
 
     await waitFor(
@@ -106,7 +128,11 @@ describe('RegisterPage', () => {
 
     renderWithRouter(<RegisterPage />);
 
-    const inviteInput = screen.getByLabelText('Invite Link');
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const inviteInput = screen.getByPlaceholderText(/invite link or token/i);
     fireEvent.change(inviteInput, { target: { value: 'invalid-token' } });
 
     await waitFor(
@@ -119,21 +145,39 @@ describe('RegisterPage', () => {
     );
   });
 
-  it('shows error when submitting without invite token', async () => {
-    const mockOnError = vi.fn();
-    renderWithRouter(<RegisterPage onError={mockOnError} />);
+  it('allows submission without invite token', async () => {
+    const mockRegisterResponse = {
+      accessToken: 'access-token-123',
+      refreshToken: 'refresh-token-123',
+      expiresAt: '2026-12-31T23:59:59Z',
+      refreshExpiresAt: '2027-12-31T23:59:59Z',
+    };
+    vi.mocked(services.api.register).mockResolvedValue(mockRegisterResponse);
 
+    renderWithRouter(<RegisterPage />);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const emailInput = screen.getByLabelText('Email address');
+    const displayNameInput = screen.getByLabelText('Display Name');
     const form = screen.getByRole('button', { name: /create account/i }).closest('form');
+
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.change(displayNameInput, { target: { value: 'Test User' } });
 
     if (form) {
       fireEvent.submit(form);
     }
 
     await waitFor(() => {
-      expect(mockOnError).toHaveBeenCalledWith('Please enter an invite link');
+      expect(services.api.register).toHaveBeenCalledWith({
+        inviteToken: undefined,
+        email: 'test@example.com',
+        displayName: 'Test User',
+      });
     });
-
-    expect(services.api.register).not.toHaveBeenCalled();
   });
 
   it('shows error when submitting with invalid email', async () => {
@@ -326,7 +370,11 @@ describe('RegisterPage', () => {
 
     renderWithRouter(<RegisterPage inviteToken="preset-token" />);
 
-    const inviteInput = screen.getByLabelText('Invite Link') as HTMLInputElement;
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    const inviteInput = screen.getByPlaceholderText(/invite link or token/i) as HTMLInputElement;
     expect(inviteInput.value).toBe('preset-token');
 
     await waitFor(
