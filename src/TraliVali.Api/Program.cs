@@ -31,6 +31,22 @@ try
     // Add controllers
     builder.Services.AddControllers();
 
+    // Configure CORS for frontend
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins(
+                    "http://localhost:5173",  // Vite dev server
+                    "http://localhost:3000",  // Alternative dev port
+                    "https://localhost:5173"
+                )
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+    });
+
     // Add services to the container.
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
@@ -174,11 +190,6 @@ try
     var emailSenderAddress = builder.Configuration.GetValue<string>("AzureCommunicationEmail:SenderAddress") 
         ?? Environment.GetEnvironmentVariable("EMAIL_SENDER_ADDRESS") ?? "";
     
-    if (string.IsNullOrWhiteSpace(emailConnectionString) || string.IsNullOrWhiteSpace(emailSenderAddress))
-    {
-        Log.Warning("Azure Communication Email is not configured. Email functionality will not work. Please configure AzureCommunicationEmail:ConnectionString and AzureCommunicationEmail:SenderAddress.");
-    }
-    
     var emailConfig = new AzureCommunicationEmailConfiguration
     {
         ConnectionString = emailConnectionString,
@@ -187,12 +198,22 @@ try
     };
     builder.Services.AddSingleton(emailConfig);
 
+    // Register email service - use NoOp for local development if not configured
+    if (string.IsNullOrWhiteSpace(emailConnectionString) || string.IsNullOrWhiteSpace(emailSenderAddress))
+    {
+        Log.Warning("Azure Communication Email is not configured. Using NoOp email service for local development.");
+        builder.Services.AddSingleton<IEmailService, NoOpEmailService>();
+    }
+    else
+    {
+        builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
+    }
+
     // Register services
     builder.Services.AddSingleton<ITokenBlacklistService, TokenBlacklistService>();
     builder.Services.AddSingleton<IPresenceService, PresenceService>();
     builder.Services.AddSingleton<IJwtService, JwtService>();
     builder.Services.AddSingleton<IMagicLinkService, MagicLinkService>();
-    builder.Services.AddSingleton<IEmailService, AzureCommunicationEmailService>();
     builder.Services.AddNotificationService(builder.Configuration);
     
     // Register InviteService
@@ -285,6 +306,9 @@ try
 
     // Add Serilog request logging
     app.UseSerilogRequestLogging();
+
+    // Enable CORS
+    app.UseCors("AllowFrontend");
 
     app.UseHttpsRedirection();
 
