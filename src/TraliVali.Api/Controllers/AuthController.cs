@@ -131,8 +131,10 @@ public class AuthController : ControllerBase
             // Generate magic link token
             var token = await _magicLinkService.CreateMagicLinkAsync(request.Email, request.DeviceId);
 
-            // Construct magic link URL
-            var magicLinkUrl = $"{Request.Scheme}://{Request.Host}/auth/verify?token={token}";
+            // Construct magic link URL - use frontend URL for verification
+            // In production, this should be configured via appsettings
+            var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:5173";
+            var magicLinkUrl = $"{frontendUrl}/auth/verify?token={token}";
 
             // Send magic link email
             await _emailService.SendMagicLinkEmailAsync(

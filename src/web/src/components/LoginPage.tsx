@@ -111,6 +111,15 @@ export function LoginPage({ onMagicLinkSent, onError }: LoginPageProps) {
               {isLoading ? 'Sending...' : 'Send magic link'}
             </button>
           </div>
+
+          <div className="text-center mt-4">
+            <p className="text-sm text-gray-600">
+              Have an invite?{' '}
+              <a href="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+                Create an account
+              </a>
+            </p>
+          </div>
         </form>
       </div>
     </div>
