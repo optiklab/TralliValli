@@ -1,9 +1,10 @@
 /**
  * RegisterPage Component
  *
- * Displays a registration form with invite link input, email, and display name.
- * Validates the invite token before allowing registration.
+ * Displays a registration form with optional invite link input, email, and display name.
+ * Validates the invite token before allowing registration if provided.
  * If system is not bootstrapped, allows registration without an invite (admin setup).
+ * If system is bootstrapped, invite link is optional for open registration.
  */
 
 import { useState, type FormEvent, useEffect } from 'react';
@@ -61,17 +62,12 @@ export function RegisterPage({
     checkSystemStatus();
   }, [inviteFromUrl, initialInviteToken]);
 
-  // Validate invite token when it changes (only if bootstrapped)
+  // Validate invite token when it changes
   useEffect(() => {
     const validateInvite = async () => {
-      // Skip validation if not bootstrapped
-      if (!isBootstrapped) {
-        setInviteValid(true);
-        return;
-      }
-
       if (!inviteToken) {
         setInviteValid(null);
+        setError(null);
         return;
       }
 
@@ -96,21 +92,14 @@ export function RegisterPage({
     // Debounce validation
     const timeoutId = setTimeout(validateInvite, INVITE_VALIDATION_DEBOUNCE_MS);
     return () => clearTimeout(timeoutId);
-  }, [inviteToken, isBootstrapped]);
+  }, [inviteToken]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validation
-    if (isBootstrapped && !inviteToken) {
-      const errorMsg = 'Please enter an invite link';
-      setError(errorMsg);
-      onError?.(errorMsg);
-      return;
-    }
-
-    if (isBootstrapped && !inviteValid) {
+    // Validation - invite token is now optional
+    if (inviteToken && inviteValid === false) {
       const errorMsg = 'Please enter a valid invite link';
       setError(errorMsg);
       onError?.(errorMsg);
@@ -143,7 +132,7 @@ export function RegisterPage({
 
     try {
       const response = await api.register({
-        inviteToken: isBootstrapped ? inviteToken : undefined,
+        inviteToken: inviteToken || undefined,
         email,
         displayName: displayName.trim(),
       });
@@ -193,7 +182,7 @@ export function RegisterPage({
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             {isBootstrapped
-              ? 'Enter your invite link and details to get started'
+              ? 'Enter your details to get started. Invite link is optional.'
               : 'Set up the first administrator account'}
           </p>
         </div>
@@ -205,13 +194,12 @@ export function RegisterPage({
                   htmlFor="invite-token"
                   className="block text-sm font-medium text-gray-700 mb-1"
                 >
-                  Invite Link
+                  Invite Link <span className="text-gray-500 text-xs">(optional)</span>
                 </label>
                 <input
                   id="invite-token"
                   name="inviteToken"
                   type="text"
-                  required
                   value={inviteToken}
                   onChange={(e) => setInviteToken(e.target.value)}
                   className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
@@ -245,7 +233,7 @@ export function RegisterPage({
                 onChange={(e) => setEmail(e.target.value)}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
-                disabled={isLoading || (isBootstrapped && !inviteValid)}
+                disabled={isLoading || (inviteToken && !inviteValid)}
               />
             </div>
 
@@ -266,7 +254,7 @@ export function RegisterPage({
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Your name"
-                disabled={isLoading || (isBootstrapped && !inviteValid)}
+                disabled={isLoading || (inviteToken && !inviteValid)}
               />
             </div>
           </div>
@@ -297,7 +285,7 @@ export function RegisterPage({
           <div>
             <button
               type="submit"
-              disabled={isLoading || (isBootstrapped && !inviteValid)}
+              disabled={isLoading || (inviteToken && !inviteValid)}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading
