@@ -28,7 +28,7 @@ docker-compose up -d
 docker-compose ps
 
 cd src/TraliVali.Api
-dotnet run
+dotnet run --launch-profile http 
 
 cd src/web
 npm install
